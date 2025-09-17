@@ -1,0 +1,323 @@
+#include "os_cfg.h"
+
+#if OS_MULTIPLE_CORE > 0u
+
+#include "I2C.h"
+#include "ucos_ii.h"
+
+uint8_t OSDevAddrTbl[64] = {I2C_SLAVE_ADDRESS, I2C_SLAVE_ADDRESS, I2C_SLAVE_ADDRESS, I2C_SLAVE_ADDRESS, I2C_SLAVE_ADDRESS, I2C_SLAVE_ADDRESS, I2C_SLAVE_ADDRESS, I2C_SLAVE_ADDRESS,
+	I2C_SLAVE_ADDRESS, I2C_SLAVE_ADDRESS,I2C_SLAVE_ADDRESS,I2C_SLAVE_ADDRESS,I2C_SLAVE_ADDRESS,I2C_SLAVE_ADDRESS,I2C_SLAVE_ADDRESS};
+OS_STK* OSStackPtrTbl[64] = {;
+
+uint8_t buffer[128];
+uint16_t buffer_len;
+
+/*
+*   多核ucos与硬件层的抽象函数
+*   如果需要使用非SPI的其它硬件实现fanos
+*   可以修改该层
+*/
+uint8_t OS_Read(uint8_t devAddr, uint8_t *data, uint16_t* len)
+{
+		return I2C2_Read(devAddr, data, len);
+}
+
+uint8_t OS_Write(uint8_t devAddr, uint8_t mode, uint8_t *data, uint16_t len)
+{
+		return I2C2_Write(devAddr, mode, data, len);
+}
+
+// 先读取len1长度buf，再读取len2长度数据
+uint8_t OS_Read2(uint8_t devAddr, uint8_t *buf1, uint8_t* buf2, uint16_t len1, uint16_t* len2)
+{
+		uint32_t timeout = 100000;
+		
+    // 1. 发送起始条件
+    I2C_GenerateSTART(I2C2, ENABLE);
+    timeout = 100000;
+    while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_MODE_SELECT)) {
+        if(--timeout == 0) {
+					I2C_GenerateSTOP(I2C2, ENABLE);
+					return 1;
+				}
+    }
+    
+    // 2. 发送设备地址（读模式）
+    I2C_Send7bitAddress(I2C2, (devAddr << 1) | 0x01 , I2C_Direction_Receiver);
+    timeout = 100000;
+    while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED)) {
+        if(--timeout == 0) {
+					I2C_GenerateSTOP(I2C2, ENABLE);
+					return 2;
+				}
+    }
+    
+		// 3. 接收长度
+		timeout = 100000;
+		while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_RECEIVED)) {
+				if(--timeout == 0) {
+						I2C_GenerateSTOP(I2C2, ENABLE);
+						return 3;
+				}
+		}
+		uint8_t size_h = I2C_ReceiveData(I2C2);
+		
+		timeout = 100000;
+		while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_RECEIVED)) {
+				if(--timeout == 0) {
+						I2C_GenerateSTOP(I2C2, ENABLE);
+						return 3;
+				}
+		}
+		uint8_t size_l = I2C_ReceiveData(I2C2);
+		
+		*len2 = (size_h << 8) | size_l;
+		
+    // 3. 接收数据包头数据
+    for(uint16_t i = 0; i < len1; i++) {
+				timeout = 100000;
+				while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_RECEIVED)) {
+						if(--timeout == 0) {
+								I2C_GenerateSTOP(I2C2, ENABLE);
+								return 3;
+						}
+				}
+				buf1[i] = I2C_ReceiveData(I2C2);
+		}
+		
+		
+		// 4. 接收实际数据
+    for(uint16_t i = 0; i < *len2; i++) {
+				// 在接收最后一个字节前禁用ACK并发送STOP
+				if(i == *len2 - 1) {
+						I2C_AcknowledgeConfig(I2C2, DISABLE); // 最后一个字节，不发送ACK
+						I2C_GenerateSTOP(I2C2, ENABLE);        // 接收完最后一个字节后发送STOP
+				}
+
+				timeout = 100000;
+				while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_RECEIVED)) {
+						if(--timeout == 0) {
+								I2C_GenerateSTOP(I2C2, ENABLE);
+								return 3;
+						}
+				}
+				buf2[i] = I2C_ReceiveData(I2C2);
+				
+		}
+		
+		I2C_AcknowledgeConfig(I2C2, ENABLE); // 恢复ACK使能
+    return 0;  // 成功
+}
+
+uint8_t OS_Write2(uint8_t devAddr, uint8_t mode, uint8_t *buf1, uint8_t *buf2, uint16_t len1, uint16_t len2)
+{
+		 uint32_t timeout = 100000;  // 超时计数器
+    
+    // 1. 发送起始条件
+    I2C_GenerateSTART(I2C2, ENABLE);
+    while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_MODE_SELECT)) {
+        if(--timeout == 0) {
+					I2C_GenerateSTOP(I2C2, ENABLE);
+					return 1;
+				}
+    }
+    
+    // 2. 发送设备地址（写模式）
+    I2C_Send7bitAddress(I2C2, devAddr << 1, I2C_Direction_Transmitter);
+    timeout = 100000;
+    while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED)) {
+        if(--timeout == 0) {
+					I2C_GenerateSTOP(I2C2, ENABLE);
+					return 2;
+				}
+    }
+    
+    // 3. 发送模式
+    I2C_SendData(I2C2, mode);
+    timeout = 100000;
+    while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_TRANSMITTED)) {
+        if(--timeout == 0) {
+					I2C_GenerateSTOP(I2C2, ENABLE);
+					return 3;
+				}
+    }
+				
+    // 4. 发送数据buf1
+    for(uint16_t i = 0; i < len1; i++) {
+        I2C_SendData(I2C2, buf1[i]);
+        timeout = 100000;
+        while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_TRANSMITTED)) {
+            if(--timeout == 0) return 4;
+        }
+    }
+    
+		// 5. 发送数据buf2
+    for(uint16_t i = 0; i < len2; i++) {
+        I2C_SendData(I2C2, buf2[i]);
+        timeout = 100000;                                                                                                                                                  
+        while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_TRANSMITTED)) {
+            if(--timeout == 0){ 
+							I2C_GenerateSTOP(I2C2, ENABLE);
+							return 5;
+						}
+        }
+    }
+		
+    // 6. 发送停止条件
+    I2C_GenerateSTOP(I2C2, ENABLE);
+    return 0;  // 成功
+}
+
+
+/*
+* 协议的实现
+*/
+
+// 0x01 获取prio优先级栈的数据
+uint8_t OS_GetStackData(INT8U prio, uint8_t* buf, uint16_t* size)
+{	
+		uint8_t status;
+		uint8_t devAddr = OSDevAddrTbl[prio];
+		//uint8_t devAddr = I2C_SLAVE_ADDRESS;
+	
+		// 1.发送 改变模式
+		status  = OS_Write(devAddr, GET_STACK_DATA, NULL, 0);
+		if(status)
+		{
+				return status;
+		}
+		
+		// 2.获取数据
+		status = OS_Read(devAddr, buf, size);
+		if(status)
+		{
+				return status;
+		}
+		
+		return RES_OK;
+}
+
+uint8_t OS_SendStackData(uint8_t devAddr, uint8_t* buf, uint16_t size)
+{
+		uint8_t status, size_h, size_l;
+		//uint8_t devAddr = OSDevAddrTbl[prio];
+		//uint8_t devAddr = I2C_SLAVE_ADDRESS;
+	
+		size_h = (size >> 8) & 0x00FF;
+		size_l = size & 0x00FF;
+	
+		uint8_t buf_tmp[3] = { size_h, size_l, prio };
+		
+		status = OS_Write2(devAddr, SEND_STACK_DATA, buf_tmp, buf, 3, size);
+		if(status)
+		{
+				return status;
+		}
+		
+		return RES_OK;
+}
+
+uint8_t OS_GetVariableData(INT8U prio, INT8U* target_prio, uint8_t* buf, uint16_t* size, uint32_t* address)
+{
+		uint8_t status;
+		uint8_t devAddr = OSDevAddrTbl[prio];
+		
+		// 1.发送 改变模式
+		status  = OS_Write(devAddr, GET_VARIABLE_DATA, NULL, 0);
+		if(status)
+		{
+				return status;
+		}
+		
+		// 2.获取数据
+		uint8_t header[5];
+		status = OS_Read2(devAddr, header, buf, 5, size);
+		
+		if(status)
+		{
+				return status;
+		}
+		// 解析地址
+		for(uint8_t i = 0;i<4;i++){
+			*address |= header[i];
+			*address = *address << 8;
+		}
+		
+		// 解析目标优先级
+		*target_prio = header[4];
+		return RES_OK;
+}
+
+uint8_t OS_SendVariableData(INT8U prio, uint8_t* buf, uint16_t size, uint16_t address)
+{
+		uint8_t status;
+		uint8_t devAddr = OSDevAddrTbl[prio];
+		uint8_t header[7];
+		
+		header[0] = (size >> 8) & 0x00FF;
+		header[1] = (size) & 0x00FF;
+	
+		for(uint8_t i = 0; i < 4; i++){
+				header[i + 2] = address & 0x000000FF;
+				address = address >> 8;
+		}
+		
+		header[6] = prio;
+		
+		status  = OS_Write2(devAddr, SEND_VARIABLE_DATA, header, buf, 7, size);
+		if(status)
+		{
+				return status;
+		}
+		
+		return RES_OK;
+}
+//// 0x02 发送栈的数据
+//uint8_t OS_SendStackData(INT8U prio, uint8_t* buf, uint16_t size)
+//{
+//		uint8_t status;
+//		
+//		OS_CommStart();
+//	
+//		// 协议头
+//		status = OS_PacketHeader(SEND_STACK_DATA);
+//		if(status != RES_OK){
+//				return status;
+//		}
+//		
+//		// 发送数据长度 size为16位
+//		status = OS_SendData( (uint8_t*)&size, 2);
+//		if(status != RES_OK){
+//				return status;
+//		}
+//		
+//		// 发送数据 长度位size
+//		status = OS_SendData(buf, size);
+//		if(status != RES_OK){
+//				return status;
+//		}
+//		
+//		OS_CommStop();
+//		
+//		return RES_OK;
+//}
+
+//// 0x03 获取数据
+//uint8_t OS_GetVariableData(INT8U *prio, uint16_t* size, uint32_t* address, uint8_t* buf)
+//{
+//		uint8_t status;
+//	
+//		OS_CommStart();
+//		
+//		// 协议头
+//		status = OS_PacketHeader(GET_VARIABLE_DATA);
+//		if(status != RES_OK){
+//				return status;
+//		}
+//		
+//		// 获取数据长度
+//		
+//}
+
+
+#endif

@@ -47,6 +47,44 @@ extern "C" {
 #include <os_cpu.h>
 #include "os_trace.h"
 
+// STM32核之间通讯协议的起始类型
+#if OS_MULTIPLE_CORE > 0u
+
+#include "stm32f10x.h" 
+
+extern uint8_t OSDevAddrTbl[64];
+extern OS_STK* OSStackPtrTbl[64];
+// type
+#define GET_STACK_DATA     0x01
+#define SEND_STACK_DATA    0x02
+#define GET_VARIABLE_DATA  0x03 
+#define SEND_VARIABLE_DATA 0x04
+#define GET_CPU_USAGE      0x05
+#define TASK_ACTIVATE      0x06
+#define TASK_DISACTIVATE   0x07
+#define TASK_ACTIVE_CHECK  0x08
+#define TASK_ACTIVE_PRIOS  0x09
+
+//require
+#define REQ_SIZE           0x01
+#define REQ_PRIO           0x02
+#define REQ_ADDRESS        0x03
+#define REQ_DATA           0x04
+#define REQ_COUNT          0x05 // CPU usage
+//respond
+#define RES_OK             0x0F
+#define RES_BUSY           0x02
+#define NOT_ALLOWED_SWITCH 0x03
+#define TASK_NOT_ACTIVATE  0x04
+#define TAST_IS_ACTIVATE   0x05
+#define PROTOCOL_ERROR     0x06
+#define STACK_NOT_CREATED  0x07
+
+uint8_t OS_GetStackData(INT8U prio, uint8_t* buf, uint16_t* size);
+uint8_t OS_SendStackData(INT8U prio, uint8_t* buf, uint16_t size);
+
+#endif
+
 /*
 *********************************************************************************************************
 *                                            MISCELLANEOUS
@@ -1370,6 +1408,12 @@ void          OS_TaskStkClr           (OS_STK          *pbos,
 
 #if (OS_TASK_STAT_STK_CHK_EN > 0u) && (OS_TASK_CREATE_EXT_EN > 0u)
 void          OS_TaskStatStkChk       (void);
+#endif
+
+#if OS_MULTIPLE_CORE > 0u
+INT8U OS_Multiple_Task_SW(INT8U	  prio,
+                          OS_STK* stk,
+                          OS_STK  len);
 #endif
 
 INT8U         OS_TCBInit              (INT8U            prio,

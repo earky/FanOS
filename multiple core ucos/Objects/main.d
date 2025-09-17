@@ -39,4 +39,6 @@
 .\objects\main.o: .\Ports\os_cfg.h
 .\objects\main.o: .\Ports\os_cpu.h
 .\objects\main.o: .\Source\os_trace.h
+.\objects\main.o: .\Hardware\I2C.h
 .\objects\main.o: .\Hardware\Serial.h
+.\objects\main.o: .\Hardware\SPI.h

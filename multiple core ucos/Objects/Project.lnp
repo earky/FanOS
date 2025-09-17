@@ -31,6 +31,8 @@
 ".\objects\oled.o"
 ".\objects\pwm.o"
 ".\objects\serial.o"
+".\objects\i2c.o"
+".\objects\spi.o"
 ".\objects\main.o"
 ".\objects\stm32f10x_it.o"
 ".\objects\app_hooks.o"
@@ -48,6 +50,7 @@
 ".\objects\os_time.o"
 ".\objects\os_tmr.o"
 ".\objects\ucos_ii.o"
+".\objects\os_multi_core.o"
 --strict --scatter ".\Objects\Project.sct"
 --summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers

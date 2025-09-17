@@ -722,6 +722,26 @@
               <FileType>5</FileType>
               <FilePath>.\Hardware\Serial.h</FilePath>
             </File>
+            <File>
+              <FileName>I2C.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Hardware\I2C.c</FilePath>
+            </File>
+            <File>
+              <FileName>I2C.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Hardware\I2C.h</FilePath>
+            </File>
+            <File>
+              <FileName>SPI.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Hardware\SPI.c</FilePath>
+            </File>
+            <File>
+              <FileName>SPI.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Hardware\SPI.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -861,6 +881,11 @@
               <FileName>ucos_ii.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\Source\ucos_ii.h</FilePath>
+            </File>
+            <File>
+              <FileName>os_multi_core.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Source\os_multi_core.c</FilePath>
             </File>
           </Files>
         </Group>

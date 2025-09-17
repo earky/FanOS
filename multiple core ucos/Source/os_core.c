@@ -2027,28 +2027,31 @@ void  OS_TaskStatStkChk (void)
 * 1:TASK not exists
 */
 #if OS_MULTIPLE_CORE > 0u
-INT8U OS_Multiple_Task_SW(INT8U	prio,
-												 OS_STK* stk,
-												 INT16U size)
+INT8U OS_Multiple_Task_SW(INT8U	  prio,
+                          OS_STK* stk,
+                          OS_STK  len)
 {
-    OS_TCB    *ptcb;	
-	  
-		ptcb = OSTCBPrioTbl[prio];
-		/* task is not exists */
-		if(ptcb == (OS_TCB*)0){
+    OS_TCB  *ptcb;	
+		OS_STK  *p_stk;
+    
+    if(len == 0)
+        return 2u;
+
+    ptcb = OSTCBPrioTbl[prio];
+    /* task is not exists */
+    if(ptcb == (OS_TCB*)0){
 				return 1u;
+    }
+
+		p_stk = ptcb->OSTCBStkBasePtr + 1u;
+
+    for(int i = len - 1;i >= 0; i--){
+			*(--p_stk) = stk[i];
 		}
-		
-		OS_STK *ptr;
-		for(INT16U i = 0; i < size; i++){
-			ptr  = ptcb->OSTCBStkBasePtr + size - 1 - i; 
-			*ptr = stk[i];
-		}
-		
-		/* set OSTCBStkPtr to new position */
-		ptcb->OSTCBStkPtr = ptcb->OSTCBStkBasePtr + size - 1;
-		
-		return 0u;
+
+    /* set OSTCBStkPtr to new position */
+    ptcb->OSTCBStkPtr = p_stk;
+    return 0u;
 }
 
 #endif
