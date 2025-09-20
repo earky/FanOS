@@ -48,12 +48,21 @@ extern "C" {
 #include "os_trace.h"
 
 // STM32核之间通讯协议的起始类型
+#define OS_MULTIPLE_CORE          1u
+
 #if OS_MULTIPLE_CORE > 0u
 
 #include "stm32f10x.h" 
 
+#define USAGE_MAX_COUNT 		10000
+#define OS_MULTI_CORE_SCHED_DELAY 100000u		/* 主核调度间隔时间 */
+
 extern uint8_t OSDevAddrTbl[64];
 extern OS_STK* OSStackPtrTbl[64];
+extern uint8_t OSDevAddrs[];
+extern uint32_t total_count;
+extern uint8_t OSCoreID;
+extern uint8_t OSDevNums;
 // type
 #define GET_STACK_DATA     0x01
 #define SEND_STACK_DATA    0x02
@@ -80,9 +89,16 @@ extern OS_STK* OSStackPtrTbl[64];
 #define PROTOCOL_ERROR     0x06
 #define STACK_NOT_CREATED  0x07
 
-uint8_t OS_GetStackData(INT8U prio, uint8_t* buf, uint16_t* size);
-uint8_t OS_SendStackData(INT8U prio, uint8_t* buf, uint16_t size);
+uint8_t OS_GetStackData(INT8U* prio, uint8_t devAddr, uint8_t* buf, uint16_t* size);
+uint8_t OS_SendStackData(INT8U target_prio, uint8_t devAddr, uint8_t* buf, uint16_t size);
+uint8_t OS_GetVariableData(uint8_t devAddr, INT8U* target_prio, uint8_t* buf, uint16_t* size, uint32_t* address);
+uint8_t OS_SendVariableData(INT8U prio, uint8_t* buf, uint16_t size, uint32_t address);
+uint8_t OS_GetCpuUsage(uint8_t devAddr, uint16_t* count);
 
+typedef struct{
+	uint8_t core_id;
+	uint8_t core_address;
+}OS_Core_Status;
 #endif
 
 /*
@@ -668,6 +684,8 @@ typedef struct os_tcb {
 
 #if OS_MULTIPLE_CORE > 0u
 	OS_STK          *OSTCBStkBasePtr;
+	uint32_t        	OSTCBCountSend;	//record usage of this task
+	uint32_t          OSTCBCountNow;	//when systick comes, plus 1, when OSTCBCountNow == USAGE_MAX_COUNT copy this to OSTCBCountSend
 #endif
 } OS_TCB;
 

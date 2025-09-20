@@ -76,7 +76,6 @@
 #define OS_TASK_SUSPEND_EN        1u   /*     Include code for OSTaskSuspend() and OSTaskResume()      */
 #define OS_TASK_SW_HOOK_EN        1u   /*     Include code for OSTaskSwHook()                          */
 /* Enable MULTIPLE_CORE settings */
-#define OS_MULTIPLE_CORE          1u
 
                                        /* ----------------------- EVENT FLAGS ------------------------ */
 #define OS_FLAG_EN                1u   /* Enable (1) or Disable (0) code generation for EVENT FLAGS    */

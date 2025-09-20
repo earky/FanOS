@@ -947,8 +947,6 @@ void  OSTimeTick (void)
     OS_CPU_SR  cpu_sr = 0u;
 #endif
 
-
-
 #if OS_TIME_TICK_HOOK_EN > 0u
     OSTimeTickHook();                                      /* Call user definable hook                     */
 #endif
@@ -958,7 +956,42 @@ void  OSTimeTick (void)
     OS_TRACE_TICK_INCREMENT(OSTime);
     OS_EXIT_CRITICAL();
 #endif
+	
     if (OSRunning == OS_TRUE) {
+			
+#if OS_MULTIPLE_CORE > 0u
+				
+				if(total_count == USAGE_MAX_COUNT)
+				{		
+						OS_ENTER_CRITICAL(); 
+						total_count = 0;
+						ptcb = OSTCBList;
+						OS_EXIT_CRITICAL();
+					
+						while (ptcb->OSTCBPrio != OS_TASK_IDLE_PRIO){
+								OS_ENTER_CRITICAL(); 
+								
+								ptcb->OSTCBCountSend = ptcb->OSTCBCountNow;
+								ptcb->OSTCBCountNow = 0;
+
+								ptcb = ptcb->OSTCBNext;                        /* Point at next TCB in TCB list                */
+								OS_EXIT_CRITICAL();
+						}
+						OS_ENTER_CRITICAL(); 
+						ptcb->OSTCBCountSend = ptcb->OSTCBCountNow;				/* Task idle */
+						ptcb->OSTCBCountNow = 0;
+						OS_EXIT_CRITICAL();
+				}else
+				{
+						OS_ENTER_CRITICAL(); 
+						total_count ++;
+					  OSTCBCur->OSTCBCountNow ++;
+						OS_EXIT_CRITICAL();
+				}
+				
+#endif
+			
+			
 #if OS_TICK_STEP_EN > 0u
         switch (OSTickStepState) {                         /* Determine whether we need to process a tick  */
             case OS_TICK_STEP_DIS:                         /* Yes, stepping is disabled                    */
@@ -986,7 +1019,7 @@ void  OSTimeTick (void)
         ptcb = OSTCBList;                                  /* Point at first TCB in TCB list               */
         while (ptcb->OSTCBPrio != OS_TASK_IDLE_PRIO) {     /* Go through all TCBs in TCB list              */
             OS_ENTER_CRITICAL();
-            if (ptcb->OSTCBDly != 0u) {                    /* No, Delayed or waiting for event with TO     */
+						if (ptcb->OSTCBDly != 0u) {                    /* No, Delayed or waiting for event with TO     */
                 ptcb->OSTCBDly--;                          /* Decrement nbr of ticks to end of delay       */
                 if (ptcb->OSTCBDly == 0u) {                /* Check for timeout                            */
 
@@ -2062,8 +2095,12 @@ INT8U  OS_TCBInit (INT8U    prio,
                    INT16U   id,
                    INT32U   stk_size,
                    void    *pext,
-                   INT16U   opt,
-									 OS_STK  *sbase)
+                   INT16U   opt
+#if OS_MULTIPLE_CORE > 0u
+									 ,OS_STK  *sbase
+#endif
+									 )
+									 
 {
     OS_TCB    *ptcb;
 #if OS_CRITICAL_METHOD == 3u                               /* Allocate storage for CPU status register */
@@ -2087,6 +2124,8 @@ INT8U  OS_TCBInit (INT8U    prio,
         ptcb->OSTCBStkPtr        = ptos;                   /* Load Stack pointer in TCB                */
 #if OS_MULTIPLE_CORE > 0u
 				ptcb->OSTCBStkBasePtr    = sbase;
+				ptcb->OSTCBCountNow 		 = 0u;
+				ptcb->OSTCBCountSend     = 0u;
 #endif
 				ptcb->OSTCBPrio          = prio;                   /* Load task priority into TCB              */
         ptcb->OSTCBStat          = OS_STAT_RDY;            /* Task is ready to run                     */

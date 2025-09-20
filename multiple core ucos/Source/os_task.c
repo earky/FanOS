@@ -251,8 +251,12 @@ INT8U  OSTaskCreate (void   (*task)(void *p_arg),
                                              /* ... the same thing until task is created.              */
         OS_EXIT_CRITICAL();
         psp = OSTaskStkInit(task, p_arg, ptos, 0u);             /* Initialize the task's stack         */
-      //最后需要加入栈顶  
-			err = OS_TCBInit(prio, psp, (OS_STK *)0, 0u, 0u, (void *)0, 0u, ptos);
+				//最后需要加入栈顶  
+				err = OS_TCBInit(prio, psp, (OS_STK *)0, 0u, 0u, (void *)0, 0u
+#if OS_MULTIPLE_CORE > 0u 
+				, ptos
+#endif
+				);
         if (err == OS_ERR_NONE) {
             OS_TRACE_TASK_CREATE(OSTCBPrioTbl[prio]);
             if (OSRunning == OS_TRUE) {      /* Find highest priority task if multitasking has started */

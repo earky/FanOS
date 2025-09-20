@@ -3,10 +3,10 @@
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_rcc.h"
 #include "I2C.h" 
-#include "ucos_ii.h"
+//#include "ucos_ii.h"
 
-uint8_t I2C_Address[2] = {I2C_SLAVE_ADDRESS1, I2C_SLAVE_ADDRESS2};
-OS_STK* OSStackPtrTbl[64];
+uint8_t I2C_Address[3] = {I2C_MASTER_ADDRESS ,I2C_SLAVE_ADDRESS1, I2C_SLAVE_ADDRESS2};
+//OS_STK* OSStackPtrTbl[64];
 I2C_Flag iflag;
 
 void I2C_Flag_Init(I2C_Flag* iflag)
@@ -106,12 +106,15 @@ void  Clear_Flag(void)
 		iflag.is_first_data = 1;
 		iflag.idx_recv = iflag.idx_send = 0;
 }
+
 // GET_STACK_DATA
 void  Get_Stack_Data_RXNE_Handler(uint32_t data)
 {
 		iflag.ptr_send = (uint8_t*)Stack;
-		iflag.idx_send = sizeof(Stack);
+		iflag.prio_send = 12;
+		iflag.size_send = sizeof(Stack);
 }
+
 void  Get_Stack_Data_TXE_Handler(void)
 {
 		switch(iflag.idx_send){
@@ -121,8 +124,11 @@ void  Get_Stack_Data_TXE_Handler(void)
 			case 1:
 				I2C2->DR = iflag.size_send & 0x00FF ;
 				break;
+			case 2:
+				I2C2->DR = iflag.prio_send;
+				break;
 			default:
-				I2C2->DR  = iflag.ptr_send[iflag.idx_send - 2];
+				I2C2->DR  = iflag.ptr_send[iflag.idx_send - 3];
 				break;
 		}
 		
@@ -131,10 +137,9 @@ void  Get_Stack_Data_TXE_Handler(void)
 
 // SEND_STACK_DATA
 char ssstr[20];
-uint8_t x[128];
+uint8_t sendstack[128];
 void  Send_Stack_Data_RXNE_Handler(uint32_t data)
 {
-		Serial_SendString("rxne_handler\n");
 		static uint8_t size_h, size_l;
 		switch(iflag.idx_recv){
 			case 0:
@@ -151,12 +156,11 @@ void  Send_Stack_Data_RXNE_Handler(uint32_t data)
 				break;
 			case 3:
 				iflag.prio_recv = (INT8U) data;
-				//iflag.ptr_recv  = (uint8_t*) OSStackPtrTbl[iflag.prio_recv];
-				iflag.ptr_recv  = x;
+			  iflag.ptr_recv  = (uint8_t*) OSStackPtrTbl[iflag.prio_recv];
 				break;
 			default:
-				sprintf(ssstr, "index:%d\n", iflag.idx_recv - 4);
-				Serial_SendString(ssstr);
+//				sprintf(ssstr, "index:%d\n", iflag.idx_recv - 4);
+//				Serial_SendString(ssstr);
 				iflag.ptr_recv[iflag.idx_recv - 4] = (uint8_t)data;
 				break;
 		}
@@ -206,6 +210,7 @@ void  Get_Variable_Data_TXE_Handler(void)
 // SEND_VARIABLE_DATA
 void Send_Variable_Data_RXNE_Handler(uint32_t data)
 {	
+		char str[20];
 		static uint8_t size_h, size_l;
 		static uint32_t address;
 		switch(iflag.idx_recv){
@@ -216,13 +221,16 @@ void Send_Variable_Data_RXNE_Handler(uint32_t data)
 				break;
 			case 2:
 				size_l = data;
+				iflag.size_recv = (size_h << 8) | size_l;
 				break;
 			case 3:
 			case 4:
 			case 5:
+				address |= (data << 24);
+				address = address >> 8;
+				break;
 			case 6:
-				address |= data & 0x000000FF;
-				address = address << 8;
+				address |= (data << 24);
 				break;
 			case 7:
 				iflag.prio_recv = data;
@@ -244,12 +252,30 @@ void Send_Variable_Data_TXE_Handler(void)
 // GET_CPU_USAGE
 void Get_CPU_Usage_RXNE_Handler(uint32_t data)
 {
-
+		
 }
 
 void Get_CPU_Usage_TXE_Handler(void)
 {
-
+		static uint16_t count_idle;
+		switch(iflag.idx_send){
+			case 0:
+				// 获取idle任务的计数
+				count_idle = OSTCBPrioTbl[OS_TASK_IDLE_PRIO]->OSTCBCountSend;
+				I2C2->DR = 0u;
+				break;
+			case 1:
+				I2C2->DR = 2u;
+				break;
+			case 2:
+			case 3:
+				I2C2->DR = count_idle & 0x000000FF;
+				count_idle = count_idle >> 8;
+				break;
+			default:
+				break;
+		}
+		iflag.idx_send ++;
 }
 
 // TASK_ACTIVATE

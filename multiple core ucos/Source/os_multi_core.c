@@ -1,17 +1,25 @@
 #include "os_cfg.h"
 
-#if OS_MULTIPLE_CORE > 0u
-
 #include "I2C.h"
 #include "ucos_ii.h"
 
+#if OS_MULTIPLE_CORE > 0u
+
+uint8_t OSCoreID = 0;
+uint8_t OSDevAddrs[] = {I2C_MASTER_ADDRESS, I2C_SLAVE_ADDRESS};
+uint8_t OSDevNums = sizeof(OSDevAddrs) / sizeof(uint8_t);
+
 uint8_t OSDevAddrTbl[64] = {I2C_SLAVE_ADDRESS, I2C_SLAVE_ADDRESS, I2C_SLAVE_ADDRESS, I2C_SLAVE_ADDRESS, I2C_SLAVE_ADDRESS, I2C_SLAVE_ADDRESS, I2C_SLAVE_ADDRESS, I2C_SLAVE_ADDRESS,
 	I2C_SLAVE_ADDRESS, I2C_SLAVE_ADDRESS,I2C_SLAVE_ADDRESS,I2C_SLAVE_ADDRESS,I2C_SLAVE_ADDRESS,I2C_SLAVE_ADDRESS,I2C_SLAVE_ADDRESS};
-OS_STK* OSStackPtrTbl[64] = {;
+OS_STK x[128];
+OS_STK* OSStackPtrTbl[64] = {x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x};
+uint16_t OSCountTbl[64] = {0};
+uint16_t OSUsageCount[64] = {0};
 
 uint8_t buffer[128];
 uint16_t buffer_len;
 
+uint32_t total_count;
 /*
 *   多核ucos与硬件层的抽象函数
 *   如果需要使用非SPI的其它硬件实现fanos
@@ -27,7 +35,7 @@ uint8_t OS_Write(uint8_t devAddr, uint8_t mode, uint8_t *data, uint16_t len)
 		return I2C2_Write(devAddr, mode, data, len);
 }
 
-// 先读取len1长度buf，再读取len2长度数据
+// 先读取header，为固定长度，之后再读取具体的data数据
 uint8_t OS_Read2(uint8_t devAddr, uint8_t *buf1, uint8_t* buf2, uint16_t len1, uint16_t* len2)
 {
 		uint32_t timeout = 100000;
@@ -174,10 +182,10 @@ uint8_t OS_Write2(uint8_t devAddr, uint8_t mode, uint8_t *buf1, uint8_t *buf2, u
 */
 
 // 0x01 获取prio优先级栈的数据
-uint8_t OS_GetStackData(INT8U prio, uint8_t* buf, uint16_t* size)
+uint8_t OS_GetStackData(INT8U* prio, uint8_t devAddr, uint8_t* buf, uint16_t* size)
 {	
 		uint8_t status;
-		uint8_t devAddr = OSDevAddrTbl[prio];
+		//uint8_t devAddr = OSDevAddrTbl[prio];
 		//uint8_t devAddr = I2C_SLAVE_ADDRESS;
 	
 		// 1.发送 改变模式
@@ -188,7 +196,7 @@ uint8_t OS_GetStackData(INT8U prio, uint8_t* buf, uint16_t* size)
 		}
 		
 		// 2.获取数据
-		status = OS_Read(devAddr, buf, size);
+		status = OS_Read2(devAddr, prio, buf, sizeof(INT8U), size);
 		if(status)
 		{
 				return status;
@@ -197,7 +205,7 @@ uint8_t OS_GetStackData(INT8U prio, uint8_t* buf, uint16_t* size)
 		return RES_OK;
 }
 
-uint8_t OS_SendStackData(uint8_t devAddr, uint8_t* buf, uint16_t size)
+uint8_t OS_SendStackData(INT8U target_prio, uint8_t devAddr, uint8_t* buf, uint16_t size)
 {
 		uint8_t status, size_h, size_l;
 		//uint8_t devAddr = OSDevAddrTbl[prio];
@@ -206,7 +214,7 @@ uint8_t OS_SendStackData(uint8_t devAddr, uint8_t* buf, uint16_t size)
 		size_h = (size >> 8) & 0x00FF;
 		size_l = size & 0x00FF;
 	
-		uint8_t buf_tmp[3] = { size_h, size_l, prio };
+		uint8_t buf_tmp[3] = { size_h, size_l, target_prio};
 		
 		status = OS_Write2(devAddr, SEND_STACK_DATA, buf_tmp, buf, 3, size);
 		if(status)
@@ -217,10 +225,10 @@ uint8_t OS_SendStackData(uint8_t devAddr, uint8_t* buf, uint16_t size)
 		return RES_OK;
 }
 
-uint8_t OS_GetVariableData(INT8U prio, INT8U* target_prio, uint8_t* buf, uint16_t* size, uint32_t* address)
+uint8_t OS_GetVariableData(uint8_t devAddr, INT8U* target_prio, uint8_t* buf, uint16_t* size, uint32_t* address)
 {
 		uint8_t status;
-		uint8_t devAddr = OSDevAddrTbl[prio];
+		//uint8_t devAddr = OSDevAddrTbl[prio];
 		
 		// 1.发送 改变模式
 		status  = OS_Write(devAddr, GET_VARIABLE_DATA, NULL, 0);
@@ -237,10 +245,14 @@ uint8_t OS_GetVariableData(INT8U prio, INT8U* target_prio, uint8_t* buf, uint16_
 		{
 				return status;
 		}
+		
 		// 解析地址
 		for(uint8_t i = 0;i<4;i++){
-			*address |= header[i];
-			*address = *address << 8;
+			*address |= (header[i] << 24);
+			// 最后处理完不需要右移
+			if(i != 3){
+				*address = *address >> 8;
+			}
 		}
 		
 		// 解析目标优先级
@@ -248,7 +260,7 @@ uint8_t OS_GetVariableData(INT8U prio, INT8U* target_prio, uint8_t* buf, uint16_
 		return RES_OK;
 }
 
-uint8_t OS_SendVariableData(INT8U prio, uint8_t* buf, uint16_t size, uint16_t address)
+uint8_t OS_SendVariableData(INT8U prio, uint8_t* buf, uint16_t size, uint32_t address)
 {
 		uint8_t status;
 		uint8_t devAddr = OSDevAddrTbl[prio];
@@ -272,6 +284,29 @@ uint8_t OS_SendVariableData(INT8U prio, uint8_t* buf, uint16_t size, uint16_t ad
 		
 		return RES_OK;
 }
+
+uint8_t OS_GetCpuUsage(uint8_t devAddr, uint16_t* count)
+{
+		uint8_t status;	
+		uint16_t len;
+	
+		// 1.发送 改变模式
+		status  = OS_Write(devAddr, GET_CPU_USAGE, NULL, 0);
+		if(status)
+		{
+				return status;
+		}
+		
+		// 2.获取数据
+		status = OS_Read2(devAddr, NULL, (uint8_t*)count, 0, &len);
+		if(status)
+		{
+				return status;
+		}
+	
+		return RES_OK;
+}
+
 //// 0x02 发送栈的数据
 //uint8_t OS_SendStackData(INT8U prio, uint8_t* buf, uint16_t size)
 //{
@@ -318,6 +353,4 @@ uint8_t OS_SendVariableData(INT8U prio, uint8_t* buf, uint16_t size, uint16_t ad
 //		// 获取数据长度
 //		
 //}
-
-
 #endif

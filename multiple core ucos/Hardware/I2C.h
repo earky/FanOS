@@ -34,7 +34,7 @@ typedef struct{
 	uint8_t  mode;
 }I2C_Flag;
 
-extern uint8_t I2C_Address[2];
+extern uint8_t I2C_Address[3];
 extern I2C_Flag iflag;
 
 void I2C_Master_Init(void);
