@@ -35,7 +35,7 @@ extern "C" {
 */
 
 #define  OS_VERSION                 29300u              /* Version of uC/OS-II (Vx.yy mult. by 10000)  */
-
+#define OS_MULTIPLE_CORE          1u
 /*
 *********************************************************************************************************
 *                                        INCLUDE HEADER FILES
@@ -47,64 +47,8 @@ extern "C" {
 #include <os_cpu.h>
 #include "os_trace.h"
 
-// STM32核之间通讯协议的起始类型
-#define OS_MULTIPLE_CORE          1u
-
 #if OS_MULTIPLE_CORE > 0u
-
 #include "stm32f10x.h" 
-
-#define USAGE_MAX_COUNT 		10000
-#define DIFF_COUNT          1000
-#define OS_MULTI_CORE_SCHED_DELAY 100000u		/* 主核调度间隔时间 */
-#define MAX_CORE_NUMS       5
-
-extern uint8_t OSDevAddrTbl[64];
-extern OS_STK* OSStackPtrTbl[64];
-extern uint8_t OSDevAddrs[];
-extern uint32_t total_count;
-extern uint8_t OSCoreID;
-extern uint8_t OSDevNums;
-extern uint8_t  OSMinCountPrio;	/* record the min count task's prio, this task will be used to multi core auto task switch*/
-extern uint16_t OSMinCount;
-// type
-#define GET_STACK_DATA     0x01
-#define SEND_STACK_DATA    0x02
-#define GET_VARIABLE_DATA  0x03 
-#define SEND_VARIABLE_DATA 0x04
-#define GET_CPU_USAGE      0x05
-
-#define TASK_ACTIVATE      0x06
-#define TASK_DISACTIVATE   0x07
-#define TASK_ACTIVE_CHECK  0x08
-#define TASK_ACTIVE_PRIOS  0x09
-
-//require
-#define REQ_SIZE           0x01
-#define REQ_PRIO           0x02
-#define REQ_ADDRESS        0x03
-#define REQ_DATA           0x04
-#define REQ_COUNT          0x05 // CPU usage
-//respond
-#define RES_OK             0x0F
-#define RES_BUSY           0x02
-#define NOT_ALLOWED_SWITCH 0x03
-#define TASK_NOT_ACTIVATE  0x04
-#define TAST_IS_ACTIVATE   0x05
-#define PROTOCOL_ERROR     0x06
-#define STACK_NOT_CREATED  0x07
-
-uint8_t OS_GetStackData(INT8U* prio, uint8_t devAddr, uint8_t* buf, uint16_t* size);
-uint8_t OS_SendStackData(INT8U target_prio, uint8_t devAddr, uint8_t* buf, uint16_t size);
-uint8_t OS_GetVariableData(uint8_t devAddr, INT8U* target_prio, uint8_t* buf, uint16_t* size, uint32_t* address);
-uint8_t OS_SendVariableData(INT8U prio, uint8_t* buf, uint16_t size, uint32_t address);
-uint8_t OS_GetCpuUsage(uint8_t devAddr, uint16_t* count);
-uint8_t OS_MultipleTaskSW(INT8U	  prio, OS_STK* stk, OS_STK  len);
-
-typedef struct{
-	uint8_t core_id;
-	uint8_t core_address;
-}OS_Core_Status;
 #endif
 
 /*
@@ -2054,6 +1998,68 @@ void          OSCtxSw                 (void);
 #endif
 
 #endif  /* ------------------------ SAFETY_CRITICAL_RELEASE ------------------------ */
+
+// STM32核之间通讯协议的起始类型
+
+
+#if OS_MULTIPLE_CORE > 0u
+
+#define USAGE_MAX_COUNT 		10000
+#define DIFF_COUNT          1000
+#define OS_MULTI_CORE_SCHED_DELAY 10000u		/* 主核调度间隔时间 */
+#define MAX_CORE_NUMS       5
+
+extern uint8_t OSDevAddrTbl[64];
+extern uint8_t Task_Switch_Buffer[512];
+extern OS_STK* OSStackPtrTbl[64];
+extern uint8_t OSDevAddrs[];
+extern uint32_t total_count;
+extern uint8_t OSCoreID;
+extern uint8_t OSDevNums;
+extern uint8_t  OSMinCountPrio;	/* record the min count task's prio, this task will be used to multi core auto task switch*/
+extern uint16_t OSMinCount;
+
+extern OS_EVENT* GetStackSem;
+// type
+#define GET_STACK_DATA     0x01
+#define SEND_STACK_DATA    0x02
+#define GET_VARIABLE_DATA  0x03 
+#define SEND_VARIABLE_DATA 0x04
+#define GET_CPU_USAGE      0x05
+
+#define TASK_ACTIVATE      0x06
+#define TASK_DISACTIVATE   0x07
+#define TASK_ACTIVE_CHECK  0x08
+#define TASK_ACTIVE_PRIOS  0x09
+
+//require
+#define REQ_SIZE           0x01
+#define REQ_PRIO           0x02
+#define REQ_ADDRESS        0x03
+#define REQ_DATA           0x04
+#define REQ_COUNT          0x05 // CPU usage
+//respond
+#define RES_OK             0x0F
+#define RES_BUSY           0x02
+#define NOT_ALLOWED_SWITCH 0x03
+#define TASK_NOT_ACTIVATE  0x04
+#define TAST_IS_ACTIVATE   0x05
+#define PROTOCOL_ERROR     0x06
+#define STACK_NOT_CREATED  0x07
+
+uint8_t OS_GetStackData(INT8U* prio, uint8_t devAddr, uint8_t* buf, uint16_t* size);
+uint8_t OS_SendStackData(INT8U target_prio, uint8_t devAddr, uint8_t* buf, uint16_t size);
+uint8_t OS_GetVariableData(uint8_t devAddr, INT8U* target_prio, uint8_t* buf, uint16_t* size, uint32_t* address);
+uint8_t OS_SendVariableData(INT8U prio, uint8_t* buf, uint16_t size, uint32_t address);
+uint8_t OS_GetCpuUsage(uint8_t devAddr, uint16_t* count);
+uint8_t OS_MultipleTaskSW(INT8U	  prio, OS_STK* stk, OS_STK  len);
+
+typedef struct{
+	uint8_t core_id;
+	uint8_t core_address;
+}OS_Core_Status;
+#endif
+
 
 #ifdef __cplusplus
 }

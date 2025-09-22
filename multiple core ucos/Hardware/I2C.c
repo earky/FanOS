@@ -171,21 +171,28 @@ void  Send_Stack_Data_RXNE_Handler(uint32_t data)
 				break;
 			case 3:
 				iflag.prio_recv = (INT8U) data;
-			  iflag.ptr_recv  = (uint8_t*) OSStackPtrTbl[iflag.prio_recv];
+			  iflag.ptr_recv  = Task_Switch_Buffer;
 				break;
 			default:
 //				sprintf(ssstr, "index:%d\n", iflag.idx_recv - 4);
 //				Serial_SendString(ssstr);
 				iflag.ptr_recv[iflag.idx_recv - 4] = (uint8_t)data;
+				if(iflag.idx_recv - 3 == iflag.size_recv){
+						OSSemPost(GetStackSem);
+				}
 				break;
 		}
-		
 		iflag.idx_recv ++;
 }
 
 void  Send_Stack_Data_TXE_Handler(void)
 {
 
+}
+
+void  Send_Stack_Data_STOPF_Handler(void)
+{
+		//OSSemPost(GetStackSem);
 }
 
 // GET_VARIABLE_DATA
@@ -408,6 +415,13 @@ void I2C2_EV_IRQHandler(void)
 				// 正确清除STOPF标志的序列
 				uint32_t tmp = I2C2->SR1; // 读取SR1寄存器（必须操作）
 				I2C2->CR1 |= 0x0000;      // 写入CR1（任何值均可，保持操作序列）
+				switch(iflag.mode){
+						case SEND_STACK_DATA:
+							Send_Stack_Data_STOPF_Handler();
+							break;
+						default:
+							break;
+				}
 				Serial_SendString("stopf\n");
 				Clear_Flag();
     }

@@ -5,6 +5,8 @@
 
 #if OS_MULTIPLE_CORE > 0u
 
+OS_EVENT* GetStackSem;
+
 uint8_t OSCoreID = 0;
 uint8_t OSDevAddrs[] = {I2C_MASTER_ADDRESS, I2C_SLAVE_ADDRESS};
 uint8_t OSDevNums = sizeof(OSDevAddrs) / sizeof(uint8_t);

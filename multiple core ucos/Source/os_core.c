@@ -976,8 +976,11 @@ void  OSTimeTick (void)
 								ptcb->OSTCBCountSend = ptcb->OSTCBCountNow;
 								ptcb->OSTCBCountNow = 0;
 								
-								/* set the min count & prio, the specific task is not participating in multi core schedul */
-								if(ptcb->OSTCBCountSend < OSMinCount && !ptcb->OSTCBIsSpecific){
+								/* set the min count & prio, the specific task is not participating in multi core schedul 
+								 * the suspend task is not allowed to be the min count & prio				
+								 */
+								if(ptcb->OSTCBCountSend < OSMinCount && !ptcb->OSTCBIsSpecific 
+										&& (ptcb->OSTCBStat & OS_STAT_SUSPEND) == OS_STAT_RDY){
 										OSMinCount     = ptcb->OSTCBCountSend;
 										OSMinCountPrio = ptcb->OSTCBPrio;
 								}
@@ -985,6 +988,7 @@ void  OSTimeTick (void)
 								ptcb = ptcb->OSTCBNext;                        /* Point at next TCB in TCB list                */
 								OS_EXIT_CRITICAL();
 						}
+						
 						OS_ENTER_CRITICAL(); 
 						ptcb->OSTCBCountSend = ptcb->OSTCBCountNow;				/* Task idle */
 						ptcb->OSTCBCountNow = 0;
