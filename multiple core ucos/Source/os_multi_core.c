@@ -8,6 +8,11 @@
 uint8_t OSCoreID = 0;
 uint8_t OSDevAddrs[] = {I2C_MASTER_ADDRESS, I2C_SLAVE_ADDRESS};
 uint8_t OSDevNums = sizeof(OSDevAddrs) / sizeof(uint8_t);
+uint8_t  OSMinCountPrio = OS_TASK_IDLE_PRIO;
+uint16_t OSMinCount     = USAGE_MAX_COUNT;
+
+/* 0:All ok    1:there is no task for main core to schdule   2:no response(maybe the core is broken)*/
+uint8_t  OSCoreStatus[MAX_CORE_NUMS] = {0};
 
 uint8_t OSDevAddrTbl[64] = {I2C_SLAVE_ADDRESS, I2C_SLAVE_ADDRESS, I2C_SLAVE_ADDRESS, I2C_SLAVE_ADDRESS, I2C_SLAVE_ADDRESS, I2C_SLAVE_ADDRESS, I2C_SLAVE_ADDRESS, I2C_SLAVE_ADDRESS,
 	I2C_SLAVE_ADDRESS, I2C_SLAVE_ADDRESS,I2C_SLAVE_ADDRESS,I2C_SLAVE_ADDRESS,I2C_SLAVE_ADDRESS,I2C_SLAVE_ADDRESS,I2C_SLAVE_ADDRESS};
@@ -187,7 +192,7 @@ uint8_t OS_GetStackData(INT8U* prio, uint8_t devAddr, uint8_t* buf, uint16_t* si
 		uint8_t status;
 		//uint8_t devAddr = OSDevAddrTbl[prio];
 		//uint8_t devAddr = I2C_SLAVE_ADDRESS;
-	
+		
 		// 1.发送 改变模式
 		status  = OS_Write(devAddr, GET_STACK_DATA, NULL, 0);
 		if(status)
@@ -353,4 +358,38 @@ uint8_t OS_GetCpuUsage(uint8_t devAddr, uint16_t* count)
 //		// 获取数据长度
 //		
 //}
+/*
+* 0:Success 
+* 1:TASK not exists
+*/
+
+uint8_t OS_MultipleTaskSW(INT8U	  prio,
+														OS_STK* stk,
+														OS_STK  len)
+{
+    OS_TCB  *ptcb;	
+		OS_STK  *p_stk;
+    
+    if(len == 0)
+        return 2u;
+
+    ptcb = OSTCBPrioTbl[prio];
+    /* task is not exists */
+    if(ptcb == (OS_TCB*)0){
+				return 1u;
+    }
+
+		p_stk = ptcb->OSTCBStkBasePtr + 1u;
+
+    for(int i = len - 1;i >= 0; i--){
+			*(--p_stk) = stk[i];
+		}
+
+    /* set OSTCBStkPtr to new position */
+    ptcb->OSTCBStkPtr = p_stk;
+		
+		OSTaskResume(prio);
+    return 0u;
+}
+
 #endif

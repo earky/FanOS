@@ -966,6 +966,8 @@ void  OSTimeTick (void)
 						OS_ENTER_CRITICAL(); 
 						total_count = 0;
 						ptcb = OSTCBList;
+						OSMinCount     = USAGE_MAX_COUNT;
+						OSMinCountPrio = OS_TASK_IDLE_PRIO;
 						OS_EXIT_CRITICAL();
 					
 						while (ptcb->OSTCBPrio != OS_TASK_IDLE_PRIO){
@@ -973,7 +975,13 @@ void  OSTimeTick (void)
 								
 								ptcb->OSTCBCountSend = ptcb->OSTCBCountNow;
 								ptcb->OSTCBCountNow = 0;
-
+								
+								/* set the min count & prio, the specific task is not participating in multi core schedul */
+								if(ptcb->OSTCBCountSend < OSMinCount && !ptcb->OSTCBIsSpecific){
+										OSMinCount     = ptcb->OSTCBCountSend;
+										OSMinCountPrio = ptcb->OSTCBPrio;
+								}
+								
 								ptcb = ptcb->OSTCBNext;                        /* Point at next TCB in TCB list                */
 								OS_EXIT_CRITICAL();
 						}
@@ -2054,40 +2062,6 @@ void  OS_TaskStatStkChk (void)
 * Note       : This function is INTERNAL to uC/OS-II and your application should not call it.
 *********************************************************************************************************
 */
-
-/*
-* 0:Success 
-* 1:TASK not exists
-*/
-#if OS_MULTIPLE_CORE > 0u
-INT8U OS_Multiple_Task_SW(INT8U	  prio,
-                          OS_STK* stk,
-                          OS_STK  len)
-{
-    OS_TCB  *ptcb;	
-		OS_STK  *p_stk;
-    
-    if(len == 0)
-        return 2u;
-
-    ptcb = OSTCBPrioTbl[prio];
-    /* task is not exists */
-    if(ptcb == (OS_TCB*)0){
-				return 1u;
-    }
-
-		p_stk = ptcb->OSTCBStkBasePtr + 1u;
-
-    for(int i = len - 1;i >= 0; i--){
-			*(--p_stk) = stk[i];
-		}
-
-    /* set OSTCBStkPtr to new position */
-    ptcb->OSTCBStkPtr = p_stk;
-    return 0u;
-}
-
-#endif
 
 INT8U  OS_TCBInit (INT8U    prio,
                    OS_STK  *ptos,

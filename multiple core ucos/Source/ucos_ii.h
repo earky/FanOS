@@ -55,7 +55,9 @@ extern "C" {
 #include "stm32f10x.h" 
 
 #define USAGE_MAX_COUNT 		10000
+#define DIFF_COUNT          1000
 #define OS_MULTI_CORE_SCHED_DELAY 100000u		/* 主核调度间隔时间 */
+#define MAX_CORE_NUMS       5
 
 extern uint8_t OSDevAddrTbl[64];
 extern OS_STK* OSStackPtrTbl[64];
@@ -63,12 +65,15 @@ extern uint8_t OSDevAddrs[];
 extern uint32_t total_count;
 extern uint8_t OSCoreID;
 extern uint8_t OSDevNums;
+extern uint8_t  OSMinCountPrio;	/* record the min count task's prio, this task will be used to multi core auto task switch*/
+extern uint16_t OSMinCount;
 // type
 #define GET_STACK_DATA     0x01
 #define SEND_STACK_DATA    0x02
 #define GET_VARIABLE_DATA  0x03 
 #define SEND_VARIABLE_DATA 0x04
 #define GET_CPU_USAGE      0x05
+
 #define TASK_ACTIVATE      0x06
 #define TASK_DISACTIVATE   0x07
 #define TASK_ACTIVE_CHECK  0x08
@@ -94,6 +99,7 @@ uint8_t OS_SendStackData(INT8U target_prio, uint8_t devAddr, uint8_t* buf, uint1
 uint8_t OS_GetVariableData(uint8_t devAddr, INT8U* target_prio, uint8_t* buf, uint16_t* size, uint32_t* address);
 uint8_t OS_SendVariableData(INT8U prio, uint8_t* buf, uint16_t size, uint32_t address);
 uint8_t OS_GetCpuUsage(uint8_t devAddr, uint16_t* count);
+uint8_t OS_MultipleTaskSW(INT8U	  prio, OS_STK* stk, OS_STK  len);
 
 typedef struct{
 	uint8_t core_id;
@@ -683,7 +689,8 @@ typedef struct os_tcb {
 #endif
 
 #if OS_MULTIPLE_CORE > 0u
-	OS_STK          *OSTCBStkBasePtr;
+	OS_STK          	*OSTCBStkBasePtr;
+	uint8_t           OSTCBIsSpecific;	/* if true this task is not allowed to swtich to other core */
 	uint32_t        	OSTCBCountSend;	//record usage of this task
 	uint32_t          OSTCBCountNow;	//when systick comes, plus 1, when OSTCBCountNow == USAGE_MAX_COUNT copy this to OSTCBCountSend
 #endif

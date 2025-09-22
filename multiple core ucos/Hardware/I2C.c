@@ -110,9 +110,24 @@ void  Clear_Flag(void)
 // GET_STACK_DATA
 void  Get_Stack_Data_RXNE_Handler(uint32_t data)
 {
-		iflag.ptr_send = (uint8_t*)Stack;
-		iflag.prio_send = 12;
-		iflag.size_send = sizeof(Stack);
+#if OS_CRITICAL_METHOD == 3u                               /* Allocate storage for CPU status register     */
+    OS_CPU_SR  cpu_sr = 0u;
+#endif
+		INT8U MinPrio;
+	
+		OS_ENTER_CRITICAL();
+		MinPrio = OSMinCountPrio;
+		OS_EXIT_CRITICAL();
+		
+		OSTaskSuspend(MinPrio);
+	
+		OS_TCB* ptcb = OSTCBPrioTbl[MinPrio];
+	
+		iflag.ptr_send = (uint8_t *)ptcb->OSTCBStkPtr; 
+		iflag.size_send = (ptcb->OSTCBStkBasePtr - ptcb->OSTCBStkPtr + 1u) * 4;
+		iflag.prio_send = MinPrio;
+		iflag.prio_send = OSMinCountPrio;
+	
 }
 
 void  Get_Stack_Data_TXE_Handler(void)
