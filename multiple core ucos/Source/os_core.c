@@ -2076,6 +2076,8 @@ INT8U  OS_TCBInit (INT8U    prio,
                    INT16U   opt
 #if OS_MULTIPLE_CORE > 0u
 									 ,OS_STK  *sbase
+									 , uint8_t CoreID
+									 , uint8_t IsSpecific
 #endif
 									 )
 									 
@@ -2101,9 +2103,11 @@ INT8U  OS_TCBInit (INT8U    prio,
         OS_EXIT_CRITICAL();
         ptcb->OSTCBStkPtr        = ptos;                   /* Load Stack pointer in TCB                */
 #if OS_MULTIPLE_CORE > 0u
-				ptcb->OSTCBStkBasePtr    = sbase;
-				ptcb->OSTCBCountNow 		 = 0u;
-				ptcb->OSTCBCountSend     = 0u;
+				ptcb->OSTCBStkBasePtr    = sbase;									 /* Record STK base ptr */
+				ptcb->OSTCBCountNow 		 = 0u;										 /* Init Count Now */
+				ptcb->OSTCBCountSend     = 0u;										 /* Init Count Send */
+				ptcb->InitCoreID         = CoreID;							 /* Init Core ID */
+				ptcb->OSTCBIsSpecific    = IsSpecific;						 /* Task is Specific or not */
 #endif
 				ptcb->OSTCBPrio          = prio;                   /* Load task priority into TCB              */
         ptcb->OSTCBStat          = OS_STAT_RDY;            /* Task is ready to run                     */

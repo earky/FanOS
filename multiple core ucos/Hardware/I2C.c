@@ -126,7 +126,6 @@ void  Get_Stack_Data_RXNE_Handler(uint32_t data)
 		iflag.ptr_send = (uint8_t *)ptcb->OSTCBStkPtr; 
 		iflag.size_send = (ptcb->OSTCBStkBasePtr - ptcb->OSTCBStkPtr + 1u) * 4;
 		iflag.prio_send = MinPrio;
-		iflag.prio_send = OSMinCountPrio;
 	
 }
 

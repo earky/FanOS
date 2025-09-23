@@ -637,6 +637,7 @@ typedef struct os_tcb {
 	uint8_t           OSTCBIsSpecific;	/* if true this task is not allowed to swtich to other core */
 	uint32_t        	OSTCBCountSend;	//record usage of this task
 	uint32_t          OSTCBCountNow;	//when systick comes, plus 1, when OSTCBCountNow == USAGE_MAX_COUNT copy this to OSTCBCountSend
+	uint8_t           InitCoreID;					/* this task was init by which core */
 #endif
 } OS_TCB;
 
@@ -1149,7 +1150,12 @@ INT8U         OSTaskChangePrio        (INT8U            oldprio,
 INT8U         OSTaskCreate            (void           (*task)(void *p_arg),
                                        void            *p_arg,
                                        OS_STK          *ptos,
-                                       INT8U            prio);
+                                       INT8U            prio
+#if OS_MULTIPLE_CORE > 0u
+																			 , uint8_t CoreID
+																			 , uint8_t IsSpecific
+#endif
+																			 );
 #endif
 
 #if OS_TASK_CREATE_EXT_EN > 0u
@@ -1391,8 +1397,13 @@ INT8U         OS_TCBInit              (INT8U            prio,
                                        INT16U           id,
                                        INT32U           stk_size,
                                        void            *pext,
-                                       INT16U           opt,
-																			 OS_STK          *sbase);
+                                       INT16U           opt
+#if OS_MULTIPLE_CORE > 0u
+																			 , OS_STK          *sbase
+																			 , uint8_t CoreID
+																			 , uint8_t IsSpecific
+#endif
+																			 );
 
 #if OS_TMR_EN > 0u
 void          OSTmr_Init              (void);
@@ -2005,9 +2016,13 @@ void          OSCtxSw                 (void);
 #if OS_MULTIPLE_CORE > 0u
 
 #define USAGE_MAX_COUNT 		10000
-#define DIFF_COUNT          1000
-#define OS_MULTI_CORE_SCHED_DELAY 10000u		/* 主核调度间隔时间 */
+#define DIFF_COUNT          10
+#define OS_MULTI_CORE_SCHED_DELAY 100000u		/* 主核调度间隔时间 */
 #define MAX_CORE_NUMS       5
+#define ALL_CORES_ID        0xFF            /* 用于初始化任务时的所有核ID */           
+
+#define SPECIFIC_TRUE  1
+#define SPECIFIC_FALSE 0
 
 extern uint8_t OSDevAddrTbl[64];
 extern uint8_t Task_Switch_Buffer[512];
@@ -2053,6 +2068,8 @@ uint8_t OS_GetVariableData(uint8_t devAddr, INT8U* target_prio, uint8_t* buf, ui
 uint8_t OS_SendVariableData(INT8U prio, uint8_t* buf, uint16_t size, uint32_t address);
 uint8_t OS_GetCpuUsage(uint8_t devAddr, uint16_t* count);
 uint8_t OS_MultipleTaskSW(INT8U	  prio, OS_STK* stk, OS_STK  len);
+
+void OS_MultiCoreTaskInit(void);
 
 typedef struct{
 	uint8_t core_id;

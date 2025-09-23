@@ -219,7 +219,12 @@ INT8U  OSTaskChangePrio (INT8U  oldprio,
 INT8U  OSTaskCreate (void   (*task)(void *p_arg),
                      void    *p_arg,
                      OS_STK  *ptos,
-                     INT8U    prio)
+                     INT8U    prio
+#if OS_MULTIPLE_CORE > 0u
+										 , uint8_t CoreID
+										 , uint8_t IsSpecific
+#endif
+										 )
 {
     OS_STK     *psp;
     INT8U       err;
@@ -255,6 +260,8 @@ INT8U  OSTaskCreate (void   (*task)(void *p_arg),
 				err = OS_TCBInit(prio, psp, (OS_STK *)0, 0u, 0u, (void *)0, 0u
 #if OS_MULTIPLE_CORE > 0u 
 				, ptos
+				, CoreID
+				, IsSpecific
 #endif
 				);
         if (err == OS_ERR_NONE) {
@@ -394,7 +401,7 @@ INT8U  OSTaskCreateExt (void   (*task)(void *p_arg),
 #endif
 
         psp = OSTaskStkInit(task, p_arg, ptos, opt);           /* Initialize the task's stack          */
-        err = OS_TCBInit(prio, psp, pbos, id, stk_size, pext, opt, ptos);
+        err = OS_TCBInit(prio, psp, pbos, id, stk_size, pext, opt, ptos, ALL_CORES_ID, SPECIFIC_TRUE);
         if (err == OS_ERR_NONE) {
             OS_TRACE_TASK_CREATE(OSTCBPrioTbl[prio]);
             if (OSRunning == OS_TRUE) {                        /* Find HPT if multitasking has started */

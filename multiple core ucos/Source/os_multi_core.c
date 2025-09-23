@@ -7,9 +7,11 @@
 
 OS_EVENT* GetStackSem;
 
-uint8_t OSCoreID = 0;
+uint8_t OSCoreID = 1;
+
 uint8_t OSDevAddrs[] = {I2C_MASTER_ADDRESS, I2C_SLAVE_ADDRESS};
 uint8_t OSDevNums = sizeof(OSDevAddrs) / sizeof(uint8_t);
+
 uint8_t  OSMinCountPrio = OS_TASK_IDLE_PRIO;
 uint16_t OSMinCount     = USAGE_MAX_COUNT;
 
@@ -392,6 +394,23 @@ uint8_t OS_MultipleTaskSW(INT8U	  prio,
 		
 		OSTaskResume(prio);
     return 0u;
+}
+
+void OS_MultiCoreTaskInit(void)	
+{
+		OS_TCB* ptcb = OSTCBList;
+		char str[20];
+		while (ptcb->OSTCBPrio != OS_TASK_IDLE_PRIO){
+				if(ptcb->InitCoreID != OSCoreID && ptcb->InitCoreID != ALL_CORES_ID){
+						if(ptcb->OSTCBPrio != 0){
+								//sprintf(str, ">> prio:%u | InitCoreID:%u\n", ptcb->OSTCBPrio, ptcb->InitCoreID);
+								//Serial_SendString(str);
+								OSTaskSuspend(ptcb->OSTCBPrio);
+						}
+				}
+				
+				ptcb = ptcb->OSTCBNext; 	
+		}
 }
 
 #endif
