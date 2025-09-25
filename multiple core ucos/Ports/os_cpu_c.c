@@ -653,7 +653,6 @@ void  SysTick_Handler (void)
     OS_CPU_SR  cpu_sr;
 #endif
 
-		//Serial_SendByte(0x21);
     OS_ENTER_CRITICAL();
     OSIntEnter();                                               /* Tell uC/OS-II that we are starting an ISR            */
     OS_EXIT_CRITICAL();

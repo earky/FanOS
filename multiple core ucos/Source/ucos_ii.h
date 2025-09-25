@@ -2034,7 +2034,13 @@ extern uint8_t OSDevNums;
 extern uint8_t  OSMinCountPrio;	/* record the min count task's prio, this task will be used to multi core auto task switch*/
 extern uint16_t OSMinCount;
 
+extern uint8_t SendDataCoreID;
+extern uint8_t OSSuspendTaskPrio;
+
 extern OS_EVENT* GetStackSem;
+extern OS_EVENT* SendDataSem;
+extern OS_EVENT* GetDataSem;
+extern OS_EVENT* TaskSuspendSem;
 // type
 #define GET_STACK_DATA     0x01
 #define SEND_STACK_DATA    0x02
@@ -2046,6 +2052,9 @@ extern OS_EVENT* GetStackSem;
 #define TASK_DISACTIVATE   0x07
 #define TASK_ACTIVE_CHECK  0x08
 #define TASK_ACTIVE_PRIOS  0x09
+
+#define TASK_SWITCH_REQUEST 0x10
+#define IS_BUSY             0x11
 
 //require
 #define REQ_SIZE           0x01
@@ -2062,13 +2071,24 @@ extern OS_EVENT* GetStackSem;
 #define PROTOCOL_ERROR     0x06
 #define STACK_NOT_CREATED  0x07
 
+#define OS_MULTI_SCHED_PRIO   0u
+#define OS_MULTI_SUSPEND_PRIO 1u
+#define OS_MULTI_DATA_PRIO    2u
+/* 如果是OS任务则返回True，不是则返回False */
+#define IS_OS_TASK(prio)  ((prio) == OS_MULTI_SCHED_PRIO   || \
+													 (prio) == OS_MULTI_SUSPEND_PRIO || \
+													 (prio) == OS_MULTI_DATA_PRIO    || \
+													 (prio) == OS_TASK_IDLE_PRIO)
+
 uint8_t OS_GetStackData(INT8U* prio, uint8_t devAddr, uint8_t* buf, uint16_t* size);
 uint8_t OS_SendStackData(INT8U target_prio, uint8_t devAddr, uint8_t* buf, uint16_t size);
 uint8_t OS_GetVariableData(uint8_t devAddr, INT8U* target_prio, uint8_t* buf, uint16_t* size, uint32_t* address);
 uint8_t OS_SendVariableData(INT8U prio, uint8_t* buf, uint16_t size, uint32_t address);
 uint8_t OS_GetCpuUsage(uint8_t devAddr, uint16_t* count);
 uint8_t OS_MultipleTaskSW(INT8U	  prio, OS_STK* stk, OS_STK  len);
-
+//uint8_t OS_GetVariableData(uint8_t devAddr, INT8U* target_prio, uint8_t* buf, uint16_t* size, uint32_t* address);
+uint8_t OS_TaskSwitchRequest(uint8_t devAddr, INT8U* prio);
+uint8_t OS_IsBusy(uint8_t devAddr, uint8_t* isBusy);
 void OS_MultiCoreTaskInit(void);
 
 typedef struct{

@@ -6,14 +6,22 @@
 #if OS_MULTIPLE_CORE > 0u
 
 OS_EVENT* GetStackSem;
+OS_EVENT* SendDataSem;
+OS_EVENT* GetDataSem;
+OS_EVENT* TaskSuspendSem;
 
-uint8_t OSCoreID = 1;
+/* 当某一个中断发生时，将该ID置为对应核发起中断的ID */
+uint8_t SendDataCoreID = 1;
+
+uint8_t OSCoreID = 0;
 
 uint8_t OSDevAddrs[] = {I2C_MASTER_ADDRESS, I2C_SLAVE_ADDRESS};
 uint8_t OSDevNums = sizeof(OSDevAddrs) / sizeof(uint8_t);
 
 uint8_t  OSMinCountPrio = OS_TASK_IDLE_PRIO;
 uint16_t OSMinCount     = USAGE_MAX_COUNT;
+
+uint8_t OSSuspendTaskPrio = 0;
 
 /* 0:All ok    1:there is no task for main core to schdule   2:no response(maybe the core is broken)*/
 uint8_t  OSCoreStatus[MAX_CORE_NUMS] = {0};
@@ -87,7 +95,6 @@ uint8_t OS_Read2(uint8_t devAddr, uint8_t *buf1, uint8_t* buf2, uint16_t len1, u
 				}
 		}
 		uint8_t size_l = I2C_ReceiveData(I2C2);
-		
 		*len2 = (size_h << 8) | size_l;
 		
     // 3. 接收数据包头数据
@@ -314,6 +321,51 @@ uint8_t OS_GetCpuUsage(uint8_t devAddr, uint16_t* count)
 		}
 	
 		return RES_OK;
+}
+
+uint8_t OS_TaskSwitchRequest(uint8_t devAddr, INT8U* prio)
+{
+		uint8_t status;	
+		uint16_t len;
+	
+		// 1.发送 改变模式
+		status  = OS_Write(devAddr, TASK_SWITCH_REQUEST, NULL, 0);
+		if(status)
+		{
+				return status;
+		}
+		
+		// 2.获取数据
+		status = OS_Read2(devAddr, NULL, (uint8_t*)prio, 0, &len);
+		if(status)
+		{
+				return status;
+		}
+	
+		return RES_OK;
+}
+
+uint8_t OS_IsBusy(uint8_t devAddr, uint8_t* isBusy)
+{
+		uint8_t status;	
+		uint16_t len;
+	
+		// 1.发送 改变模式
+		status  = OS_Write(devAddr, IS_BUSY, NULL, 0);
+		if(status)
+		{
+				return status;
+		}
+		
+		// 2.获取数据
+		status = OS_Read2(devAddr, NULL, isBusy, 0, &len);
+		if(status)
+		{
+				return status;
+		}
+	
+		return RES_OK;
+
 }
 
 //// 0x02 发送栈的数据

@@ -10,12 +10,57 @@
 OS_STK Task_PWM_Led_STK[128];
 OS_STK Task_Serial_STK[128];
 OS_STK Task_Multi_Core_Sched_STK[128];
+OS_STK Task_Multi_Core_Suspend_STK[128];
+
 uint8_t Task_Switch_Buffer[512];
+uint8_t Data_Transfer_Buffer[512];
+
 //char sstr[10];
 char str[512] = "123\n";
 
 int id = 1;
+void OS_Multi_Core_Task_Suspend(void* p_arg){
+		if(OSCoreID == 0){
+				/* 主核不需要该任务 */
+				OSTaskDel(OS_MULTI_SUSPEND_PRIO);
+		}else{
+				INT8U err;
+				/* 外核在接收到信号量之后需要将对应的任务挂起 */
+				while(1){
+						OSSemPend(TaskSuspendSem, 0, &err);
+						/* 如果不为系统任务，则挂起，否则不挂起 */
+						if(!IS_OS_TASK(OSSuspendTaskPrio)){
+								OSTaskSuspend(OSSuspendTaskPrio);
+						}
+						
+						iflag.is_busy = 0;
+				}
+		}
+}
 
+void OS_Multi_Core_Data_Transfer(void* p_arg){
+#if OS_CRITICAL_METHOD == 3u                               /* Allocate storage for CPU status register     */
+    OS_CPU_SR  cpu_sr = 0u;
+#endif
+		
+		/* 主核进行数据的转发 */
+		if(OSCoreID == 0){
+				INT8U err;
+				INT8U prio;
+				uint8_t status;
+				while(1){
+						OSSemPend(GetDataSem, 0, &err);
+						OS_ENTER_CRITICAL();
+						//status = OS_GetVariableData(SendDataCoreID, &prio, 
+						OS_EXIT_CRITICAL();
+					
+				}
+		}else{
+		
+		
+		
+		}
+}
 
 /* 
 							Task switch
@@ -44,13 +89,15 @@ void OS_Multi_Core_Sched(void* p_arg){
 						/* 将主核设置为当前的参数 */
 						min_id = max_id = 0;
 						OS_ENTER_CRITICAL();
-						min_count = max_count = OSMinCount;
+						min_count = max_count = OSTCBPrioTbl[OS_TASK_IDLE_PRIO]->OSTCBCountSend;
 						OS_EXIT_CRITICAL();
 					
 						/* 遍历外核的CPU占用率 */
 						for(uint8_t pos = 1; pos<OSDevNums;pos++){
 								OS_ENTER_CRITICAL();
 								status = OS_GetCpuUsage(OSDevAddrs[pos], &count);
+								sprintf(str, "> count:%u\n", count);
+								Serial_SendString(str);
 								OS_EXIT_CRITICAL();
 								if(status != RES_OK){
 										Serial_SendString("not okk\n");
@@ -69,7 +116,7 @@ void OS_Multi_Core_Sched(void* p_arg){
 						sprintf(str, "\n\nMIN_COUNT:%u \nMIN_ID:%u \nMAX_COUNT:%u \nMAX_ID:%u\n\n",
 							min_count, min_id, max_count, max_id);
 						Serial_SendString(str);
-						
+
 						OS_TCB* ptcb = OSTCBList;
 						while (ptcb->OSTCBPrio != OS_TASK_IDLE_PRIO){
 								OS_ENTER_CRITICAL(); 
@@ -107,7 +154,7 @@ void OS_Multi_Core_Sched(void* p_arg){
 										OS_EXIT_CRITICAL();
 										
 										/* 如果为0或者是IDLE任务直接延时＋Continue */
-										if(prio == OS_TASK_IDLE_PRIO || prio == 0){
+										if(IS_OS_TASK(prio)){
 												OSTimeDly(OS_MULTI_CORE_SCHED_DELAY);
 												continue;
 										}
@@ -127,6 +174,27 @@ void OS_Multi_Core_Sched(void* p_arg){
 								}else{	/* 当前最大占用率为外核，将外核的任务调度进主核，暂存在RAM中 */
 										Serial_SendString("test\n");
 										OS_ENTER_CRITICAL();
+										// OS_TaskSwitchRequest(&prio, OSDevAddrs[min_id]);
+										// if(IS_OS_TASK(prio) delay continue;
+										// TimeOut = 10;
+										// OS_BusyWait(&is_busy, OSDevAddrs[min_id]) delay
+										// if(!TimeOut) delay continue;
+										/* test */
+										status = OS_TaskSwitchRequest(OSDevAddrs[min_id], &prio);
+										if(status != RES_OK){
+											/* 打印错误信息 */
+											Serial_SendString("Multi Core Schedule ERROR!\n");
+										}	
+										sprintf(str, "> Request prio is %u\n", prio);
+										Serial_SendString(str);
+										uint8_t isBusy = 1;
+										while(isBusy){
+												status = OS_IsBusy(OSDevAddrs[min_id], &isBusy);
+												Serial_SendString("isBusy!\n");
+												OSTimeDly(10u);
+										}
+									
+										/* test */
 										/* 获取对应id核的栈，并设置栈指针 */
 										status = OS_GetStackData(&prio, OSDevAddrs[min_id], Task_Switch_Buffer, &size);
 										BufferPtr = Task_Switch_Buffer;
@@ -148,7 +216,7 @@ void OS_Multi_Core_Sched(void* p_arg){
 								if(status != RES_OK){
 										/* 打印错误信息 */
 										Serial_SendString("Multi Core Schedule ERROR!\n");
-								}else if(prio == OS_TASK_IDLE_PRIO || prio == 0){
+								}else if(IS_OS_TASK(prio)){
 									/* 如果对应的优先级为IDLE优先级，则不能进行任务调度 */
 										Serial_SendString("IDLE or Multi_Schedule is not allowed to schedule\n");
 								}
@@ -181,38 +249,7 @@ void OS_Multi_Core_Sched(void* p_arg){
 										}
 								}
 						}
-//						///////////////////////////////////////////////////////////////////////////////////////
-//						uint16_t countNow, countSend, t;
-//						OS_TCB    *idle = OSTCBPrioTbl[OS_TASK_IDLE_PRIO];
-//						sprintf(str, "\n\nmin_count:%u \nmin_id:%u \nmax_count:%u \nmax_id:%u\n\n",
-//							min_count, min_id, max_count, max_id);
-//						Serial_SendString(str);
-//						
-//						
-//						OS_ENTER_CRITICAL();
-//			countNow = idle->OSTCBCountNow;
-//			countSend = idle->OSTCBCountSend;
-//			t = total_count;
-//		OS_EXIT_CRITICAL();
-//		sprintf(str, "idle:\nCount_Now:%d \nCount_Send:%d \nTotal_Count:%d \n", 
-//				countNow, countSend, t);
-//		Serial_SendString(str);
-//		
-//		if(OSCoreID == 0)
-//		{
-//				OS_ENTER_CRITICAL();
-//				uint8_t status = OS_GetCpuUsage(I2C_SLAVE_ADDRESS, (uint16_t*)&countSend);
-//				t = total_count;
-//				OS_EXIT_CRITICAL();
-//				
-//				if(status != RES_OK){
-//					Serial_SendString("get cpu usage error\n");
-//				}
-//				sprintf(str, "recv-idle:\nCount_Send:%d \n\n\n", 
-//						countSend);
-//				Serial_SendString(str);
-//		}
-//		/////////////////////////////////////////////////////////////////////////////////
+
 						/* 延时 */
 						OSTimeDly(OS_MULTI_CORE_SCHED_DELAY);
 				}
@@ -227,7 +264,7 @@ void OS_Multi_Core_Sched(void* p_arg){
 						OSSemPend(GetStackSem, 0, &err);
 												
 						/* 拷贝到任务栈 */
-						OS_ENTER_CRITICAL();
+						//OS_ENTER_CRITICAL();
 						prio = iflag.prio_recv;
 						size = iflag.size_recv;
 						
@@ -396,6 +433,9 @@ int main(void)
 	OSInit();
 	
 	GetStackSem = OSSemCreate(0);
+	SendDataSem = OSSemCreate(0);
+	GetDataSem  = OSSemCreate(0); 
+	TaskSuspendSem = OSSemCreate(0);
 	OSTaskCreate(PWM_Led,           (void *)0, &Task_PWM_Led_STK[127] , 4, 0 ,SPECIFIC_FALSE);
 	
 	char s[100];
@@ -419,7 +459,7 @@ int main(void)
 	OSTaskCreate(Serial_Send_Count, (void *)0, &Task_Serial_STK[127]  , 5, 0, SPECIFIC_TRUE);
 	//if(OSCoreID == 0)
 	OSTaskCreate(OS_Multi_Core_Sched, (void*)0, &Task_Multi_Core_Sched_STK[127], 0, ALL_CORES_ID, SPECIFIC_TRUE);
-	
+	OSTaskCreate(OS_Multi_Core_Task_Suspend, (void*)0, &Task_Multi_Core_Suspend_STK[127], 1, ALL_CORES_ID, SPECIFIC_TRUE);
 		
 	SysTick_Config(2000u);
 	OSStart();
