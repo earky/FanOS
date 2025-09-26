@@ -227,11 +227,8 @@ void  Get_Variable_Data_TXE_Handler(void)
 				I2C2->DR = address & 0x000000FF;
 				address = address >> 8;
 				break;
-			case 6:
-				I2C2->DR = iflag.prio_send;
-				break;
 			default:
-				I2C2->DR = iflag.ptr_send[iflag.idx_send - 7];
+				I2C2->DR = iflag.ptr_send[iflag.idx_send - 6];
 				break;
 		}
 		iflag.idx_send ++;
@@ -261,13 +258,10 @@ void Send_Variable_Data_RXNE_Handler(uint32_t data)
 				break;
 			case 6:
 				address |= (data << 24);
-				break;
-			case 7:
-				iflag.prio_recv = data;
 				iflag.ptr_recv = (uint8_t*) address;
 				break;
 			default:
-				iflag.ptr_recv[iflag.idx_recv - 8] = data;
+				iflag.ptr_recv[iflag.idx_recv - 7] = data;
 				break;
 		}
 		

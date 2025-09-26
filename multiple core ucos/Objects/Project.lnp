@@ -33,6 +33,7 @@
 ".\objects\serial.o"
 ".\objects\i2c.o"
 ".\objects\spi.o"
+".\objects\gpio.o"
 ".\objects\main.o"
 ".\objects\stm32f10x_it.o"
 ".\objects\app_hooks.o"

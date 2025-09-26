@@ -9,14 +9,17 @@ OS_EVENT* GetStackSem;
 OS_EVENT* SendDataSem;
 OS_EVENT* GetDataSem;
 OS_EVENT* TaskSuspendSem;
+OS_EVENT* DataTransferSem;
 
 /* 当某一个中断发生时，将该ID置为对应核发起中断的ID */
 uint8_t SendDataCoreID = 1;
 
 uint8_t OSCoreID = 0;
 
+//uint8_t OSDevAddrs[] = {I2C_MASTER_ADDRESS, I2C_SLAVE_ADDRESS};
 uint8_t OSDevAddrs[] = {I2C_MASTER_ADDRESS, I2C_SLAVE_ADDRESS};
 uint8_t OSDevNums = sizeof(OSDevAddrs) / sizeof(uint8_t);
+uint8_t DataGetDevAddr = I2C_SLAVE_ADDRESS;
 
 uint8_t  OSMinCountPrio = OS_TASK_IDLE_PRIO;
 uint16_t OSMinCount     = USAGE_MAX_COUNT;
@@ -241,10 +244,9 @@ uint8_t OS_SendStackData(INT8U target_prio, uint8_t devAddr, uint8_t* buf, uint1
 		return RES_OK;
 }
 
-uint8_t OS_GetVariableData(uint8_t devAddr, INT8U* target_prio, uint8_t* buf, uint16_t* size, uint32_t* address)
+uint8_t OS_GetVariableData(uint8_t devAddr, uint8_t* buf, uint16_t* size, uint32_t* address)
 {
 		uint8_t status;
-		//uint8_t devAddr = OSDevAddrTbl[prio];
 		
 		// 1.发送 改变模式
 		status  = OS_Write(devAddr, GET_VARIABLE_DATA, NULL, 0);
@@ -254,8 +256,8 @@ uint8_t OS_GetVariableData(uint8_t devAddr, INT8U* target_prio, uint8_t* buf, ui
 		}
 		
 		// 2.获取数据
-		uint8_t header[5];
-		status = OS_Read2(devAddr, header, buf, 5, size);
+		uint8_t header[4];
+		status = OS_Read2(devAddr, header, buf, 4, size);
 		
 		if(status)
 		{
@@ -272,15 +274,13 @@ uint8_t OS_GetVariableData(uint8_t devAddr, INT8U* target_prio, uint8_t* buf, ui
 		}
 		
 		// 解析目标优先级
-		*target_prio = header[4];
 		return RES_OK;
 }
 
-uint8_t OS_SendVariableData(INT8U prio, uint8_t* buf, uint16_t size, uint32_t address)
+uint8_t OS_SendVariableData(uint8_t devAddr, uint8_t* buf, uint16_t size, uint32_t address)
 {
 		uint8_t status;
-		uint8_t devAddr = OSDevAddrTbl[prio];
-		uint8_t header[7];
+		uint8_t header[6];
 		
 		header[0] = (size >> 8) & 0x00FF;
 		header[1] = (size) & 0x00FF;
@@ -290,9 +290,9 @@ uint8_t OS_SendVariableData(INT8U prio, uint8_t* buf, uint16_t size, uint32_t ad
 				address = address >> 8;
 		}
 		
-		header[6] = prio;
+		//header[6] = prio;
 		
-		status  = OS_Write2(devAddr, SEND_VARIABLE_DATA, header, buf, 7, size);
+		status  = OS_Write2(devAddr, SEND_VARIABLE_DATA, header, buf, 6, size);
 		if(status)
 		{
 				return status;

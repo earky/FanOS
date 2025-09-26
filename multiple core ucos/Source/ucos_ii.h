@@ -2034,6 +2034,8 @@ extern uint8_t OSDevNums;
 extern uint8_t  OSMinCountPrio;	/* record the min count task's prio, this task will be used to multi core auto task switch*/
 extern uint16_t OSMinCount;
 
+extern uint8_t DataGetDevAddr;
+
 extern uint8_t SendDataCoreID;
 extern uint8_t OSSuspendTaskPrio;
 
@@ -2041,6 +2043,8 @@ extern OS_EVENT* GetStackSem;
 extern OS_EVENT* SendDataSem;
 extern OS_EVENT* GetDataSem;
 extern OS_EVENT* TaskSuspendSem;
+extern OS_EVENT* DataTransferSem;
+
 // type
 #define GET_STACK_DATA     0x01
 #define SEND_STACK_DATA    0x02
@@ -2082,8 +2086,9 @@ extern OS_EVENT* TaskSuspendSem;
 
 uint8_t OS_GetStackData(INT8U* prio, uint8_t devAddr, uint8_t* buf, uint16_t* size);
 uint8_t OS_SendStackData(INT8U target_prio, uint8_t devAddr, uint8_t* buf, uint16_t size);
-uint8_t OS_GetVariableData(uint8_t devAddr, INT8U* target_prio, uint8_t* buf, uint16_t* size, uint32_t* address);
-uint8_t OS_SendVariableData(INT8U prio, uint8_t* buf, uint16_t size, uint32_t address);
+
+uint8_t OS_GetVariableData(uint8_t devAddr, uint8_t* buf, uint16_t* size, uint32_t* address);
+uint8_t OS_SendVariableData(uint8_t devAddr, uint8_t* buf, uint16_t size, uint32_t address);
 uint8_t OS_GetCpuUsage(uint8_t devAddr, uint16_t* count);
 uint8_t OS_MultipleTaskSW(INT8U	  prio, OS_STK* stk, OS_STK  len);
 //uint8_t OS_GetVariableData(uint8_t devAddr, INT8U* target_prio, uint8_t* buf, uint16_t* size, uint32_t* address);

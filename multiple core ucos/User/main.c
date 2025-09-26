@@ -4,13 +4,37 @@
 #include "PWM.h"
 #include "os.h"
 #include "I2C.h"
+#include "GPIO.h"
 #include "Serial.h"
 #include "SPI.h"
+
+int ID = 1;
+int main123512(){
+		Serial_Init();
+		Serial_SendString("hello\n");
+		
+		if(ID == 0){
+				GPIO_EXTI_Init();
+				while(1){}
+		}else{
+				Slave_GPIO_Init();
+				GPIO_SetBits(GPIOB, GPIO_Pin_12);
+				while(1){
+						//GPIO_SetBits(GPIOB, GPIO_Pin_12);
+						
+						for(int i=0;i<100000;i++);
+						//GPIO_ResetBits(GPIOB, GPIO_Pin_12);
+						
+				}
+		}
+}
+
 
 OS_STK Task_PWM_Led_STK[128];
 OS_STK Task_Serial_STK[128];
 OS_STK Task_Multi_Core_Sched_STK[128];
 OS_STK Task_Multi_Core_Suspend_STK[128];
+OS_STK Task_Multi_Core_Data_Transfer_STK[128];
 
 uint8_t Task_Switch_Buffer[512];
 uint8_t Data_Transfer_Buffer[512];
@@ -42,22 +66,36 @@ void OS_Multi_Core_Data_Transfer(void* p_arg){
 #if OS_CRITICAL_METHOD == 3u                               /* Allocate storage for CPU status register     */
     OS_CPU_SR  cpu_sr = 0u;
 #endif
-		
+		//uint8_t OS_GetVariableData(uint8_t devAddr, INT8U* target_prio, uint8_t* buf, uint16_t* size, uint32_t* address)
+	
 		/* 主核进行数据的转发 */
 		if(OSCoreID == 0){
 				INT8U err;
 				INT8U prio;
 				uint8_t status;
+				uint16_t size;
+				uint32_t address;
 				while(1){
-						OSSemPend(GetDataSem, 0, &err);
-						OS_ENTER_CRITICAL();
-						//status = OS_GetVariableData(SendDataCoreID, &prio, 
-						OS_EXIT_CRITICAL();
+						OSSemPend(DataTransferSem, 0, &err);
 					
+						Serial_SendString("Data Transfer start\n");
+					
+						OS_ENTER_CRITICAL();
+						status = OS_GetVariableData(DataGetDevAddr, Data_Transfer_Buffer, &size, &address);
+						OS_EXIT_CRITICAL();
+						
+						sprintf(str, "addr:%x, size:%u\n", address, size);
+						Serial_SendString(str);
+					
+						for(int i=0;i<size;i++){
+								sprintf(str, "%u ", Data_Transfer_Buffer[i]);
+								Serial_SendString(str);
+						}
+						Serial_SendString("\n");
 				}
 		}else{
 		
-		
+				OSTaskDel(OS_MULTI_DATA_PRIO);
 		
 		}
 }
@@ -68,6 +106,8 @@ void OS_Multi_Core_Data_Transfer(void* p_arg){
 							min_id -- > max_id 
 		}
 */
+uint8_t tempData[] = {1,2,3,4,5,6,7,8,9};
+
 void OS_Multi_Core_Sched(void* p_arg){
 	
 #if OS_CRITICAL_METHOD == 3u                               /* Allocate storage for CPU status register     */
@@ -264,23 +304,18 @@ void OS_Multi_Core_Sched(void* p_arg){
 						OSSemPend(GetStackSem, 0, &err);
 												
 						/* 拷贝到任务栈 */
-						//OS_ENTER_CRITICAL();
+						
 						prio = iflag.prio_recv;
 						size = iflag.size_recv;
 						
-						//Serial_SendString("Switch task\n");
-						
-//						sprintf(str, "prio:%u \nsize:%u\n",prio,size);
-//						Serial_SendString(str);
-//						for(int i=0;i<size;i++){
-//							sprintf(str, "%x ", Task_Switch_Buffer[i]);
-//							Serial_SendString(str);
-//						}
-//						Serial_SendString("\n");
+	
 						OS_MultipleTaskSW(prio, (OS_STK*)Task_Switch_Buffer, size/4);
 						OSTaskResume(prio);
-						//OS_EXIT_CRITICAL();
-						
+					
+						iflag.ptr_send = tempData;
+						iflag.size_send = sizeof(tempData);
+					
+						Slave_SendData();
 				}
 		}
 }
@@ -423,10 +458,14 @@ int main(void)
 	
 
 	
-	if(OSCoreID == 0)
+	if(OSCoreID == 0){
 		I2C2_Master_Init();
-	else
+		GPIO_EXTI_Init();
+	}
+	else{
 		I2C2_Slave_Init(I2C_SLAVE_ADDRESS);
+		Slave_GPIO_Init();
+	}
 	
 	Serial_SendString("hello\n");
 
@@ -436,6 +475,8 @@ int main(void)
 	SendDataSem = OSSemCreate(0);
 	GetDataSem  = OSSemCreate(0); 
 	TaskSuspendSem = OSSemCreate(0);
+	DataTransferSem = OSSemCreate(0);
+	
 	OSTaskCreate(PWM_Led,           (void *)0, &Task_PWM_Led_STK[127] , 4, 0 ,SPECIFIC_FALSE);
 	
 	char s[100];
@@ -460,7 +501,7 @@ int main(void)
 	//if(OSCoreID == 0)
 	OSTaskCreate(OS_Multi_Core_Sched, (void*)0, &Task_Multi_Core_Sched_STK[127], 0, ALL_CORES_ID, SPECIFIC_TRUE);
 	OSTaskCreate(OS_Multi_Core_Task_Suspend, (void*)0, &Task_Multi_Core_Suspend_STK[127], 1, ALL_CORES_ID, SPECIFIC_TRUE);
-		
+	OSTaskCreate(OS_Multi_Core_Data_Transfer, (void*)0, &Task_Multi_Core_Data_Transfer_STK[127], 2, ALL_CORES_ID, SPECIFIC_TRUE);
 	SysTick_Config(2000u);
 	OSStart();
 	return 0;
