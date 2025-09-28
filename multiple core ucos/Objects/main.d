@@ -43,3 +43,4 @@
 .\objects\main.o: .\Hardware\GPIO.h
 .\objects\main.o: .\Hardware\Serial.h
 .\objects\main.o: .\Hardware\SPI.h
+.\objects\main.o: C:\download\Keil5\ARM\ARMCC\Bin\..\include\string.h

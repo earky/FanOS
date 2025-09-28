@@ -7,22 +7,36 @@
 #include "GPIO.h"
 #include "Serial.h"
 #include "SPI.h"
+#include <string.h>
+int ID = 0;
+char str[512] = "123\n";
 
-int ID = 1;
-int main123512(){
+int mainttt(){
 		Serial_Init();
 		Serial_SendString("hello\n");
 		
 		if(ID == 0){
 				GPIO_EXTI_Init();
+			
+				uint8_t* p = (uint8_t*) 0x200000c0;
+				uint32_t addr = (uint32_t) p;
+			
+				sprintf(str,"%x\n", addr);
+				Serial_SendString(str);
 				while(1){}
 		}else{
 				Slave_GPIO_Init();
-				GPIO_SetBits(GPIOB, GPIO_Pin_12);
+				
+			
+				Slave_SendData();
+				for(int i=0;i<100000;i++);
+				Slave_SendData();
 				while(1){
 						//GPIO_SetBits(GPIOB, GPIO_Pin_12);
 						
 						for(int i=0;i<100000;i++);
+						//Slave_SendData();
+						//GPIO_SetBits(GPIOB, GPIO_Pin_12);	
 						//GPIO_ResetBits(GPIOB, GPIO_Pin_12);
 						
 				}
@@ -40,9 +54,27 @@ uint8_t Task_Switch_Buffer[512];
 uint8_t Data_Transfer_Buffer[512];
 
 //char sstr[10];
-char str[512] = "123\n";
 
+uint8_t tempData[] = {1,2,3,4,5,6,7,8,9};
+//uint8_t tempData[] = {9,8,7,6,5,4,3,2,1};
 int id = 1;
+
+void OS_Data_Transfer_Switch_Callback(uint8_t type){
+		switch(type){
+			case 0:
+				Serial_SendString("OS_Data_Transfer_Switch_Callback 0\n");
+				for(int i=0;i<9;i++){
+						sprintf(str, "%u ", tempData[i]);
+						Serial_SendString(str);
+				}
+				Serial_SendString("\n");
+				break;
+			default:
+			
+				break;
+		}
+}
+
 void OS_Multi_Core_Task_Suspend(void* p_arg){
 		if(OSCoreID == 0){
 				/* 主核不需要该任务 */
@@ -75,16 +107,19 @@ void OS_Multi_Core_Data_Transfer(void* p_arg){
 				uint8_t status;
 				uint16_t size;
 				uint32_t address;
+				uint8_t type;
+				uint8_t tmpDeAddr;
 				while(1){
 						OSSemPend(DataTransferSem, 0, &err);
-					
+						
 						Serial_SendString("Data Transfer start\n");
 					
 						OS_ENTER_CRITICAL();
-						status = OS_GetVariableData(DataGetDevAddr, Data_Transfer_Buffer, &size, &address);
+						tmpDeAddr = OSOutQueue(&os_queue);
+						status = OS_GetVariableData(tmpDeAddr, Data_Transfer_Buffer, &size, &address, &type);
 						OS_EXIT_CRITICAL();
 						
-						sprintf(str, "addr:%x, size:%u\n", address, size);
+						sprintf(str, "tempaddr:%x, addr:%x, size:%u, type:%u\n", tempData, address, size, type);
 						Serial_SendString(str);
 					
 						for(int i=0;i<size;i++){
@@ -92,10 +127,39 @@ void OS_Multi_Core_Data_Transfer(void* p_arg){
 								Serial_SendString(str);
 						}
 						Serial_SendString("\n");
+						
+						/* test code */
+						for(uint8_t i=1;i<OSDevNums;i++){
+								/* 原地址不更改 */
+								if(OSDevAddrs[i] == tmpDeAddr)
+										continue;
+							
+								OS_ENTER_CRITICAL();
+								status = OS_SendVariableData(OSDevAddrs[i], Data_Transfer_Buffer, size, address, type);
+								OS_EXIT_CRITICAL();
+						}
+						// 拷贝到本地地址
+						memcpy((uint8_t*) address, Data_Transfer_Buffer, size);
+						
+						OS_Data_Transfer_Switch_Callback(type);
 				}
 		}else{
-		
-				OSTaskDel(OS_MULTI_DATA_PRIO);
+				INT8U err;
+				uint8_t type;
+				while(1){
+						/* 回调函数 */
+						OSSemPend(DataTransferSem, 0, &err);
+						
+						OS_ENTER_CRITICAL();
+						type = iflag.type_recv;
+						OS_EXIT_CRITICAL();
+						OS_Data_Transfer_Switch_Callback(type);
+					
+				}
+				
+				
+				
+				//OSTaskDel(OS_MULTI_DATA_PRIO);
 		
 		}
 }
@@ -106,7 +170,6 @@ void OS_Multi_Core_Data_Transfer(void* p_arg){
 							min_id -- > max_id 
 		}
 */
-uint8_t tempData[] = {1,2,3,4,5,6,7,8,9};
 
 void OS_Multi_Core_Sched(void* p_arg){
 	
@@ -312,10 +375,13 @@ void OS_Multi_Core_Sched(void* p_arg){
 						OS_MultipleTaskSW(prio, (OS_STK*)Task_Switch_Buffer, size/4);
 						OSTaskResume(prio);
 					
+					
+						/* test code */
 						iflag.ptr_send = tempData;
 						iflag.size_send = sizeof(tempData);
 					
 						Slave_SendData();
+						/* test code */
 				}
 		}
 }
@@ -457,6 +523,7 @@ int main(void)
 	Serial_Init();	//Serial初始化
 	
 
+	OSInitQueue(&os_queue);
 	
 	if(OSCoreID == 0){
 		I2C2_Master_Init();

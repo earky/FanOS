@@ -46,13 +46,15 @@ void EXTI15_10_IRQHandler(void)
         
         // 处理完成后，拉低GPIO（通知从机可以发送新数据）
         //GPIO_ResetBits(GPIOB, GPIO_Pin_12);
-				Serial_SendString(">>> IQ\n");
+				//Serial_SendString(">>> IQ\n");
 				OSSemPost(DataTransferSem);
+				OSEnterQueue(&os_queue, OSDevAddrs[1]);
 				//Serial_SendString(">> test\n");
         // 清除中断标志位
         EXTI_ClearITPendingBit(EXTI_Line12);
     }
 }
+
 
 // 从机端：GPIO初始化（PB12）
 void Slave_GPIO_Init(void)
@@ -74,11 +76,11 @@ void Slave_GPIO_Init(void)
 // 从机端：发送数据函数（PB12）
 void Slave_SendData(void)
 {
-    // 检查主机是否已处理完上一次数据（GPIO为低电平）
-    //if (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_12) == Bit_RESET) 
-    //{
-        // 主机已拉低，可以发送新数据
-        GPIO_SetBits(GPIOB, GPIO_Pin_12);  // 拉高GPIO，请求主机处理
-    //}
-    // 否则，GPIO仍为高电平（主机正在处理），等待下一次尝试
+//    // 检查主机是否已处理完上一次数据（GPIO为低电平）
+//    while (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_12) == Bit_RESET) 
+//    {
+//					OSTimeDly(SLAVE_DATA_TRANSFER_WAIT_DELAY);
+//    }
+		GPIO_ResetBits(GPIOB, GPIO_Pin_12);
+		GPIO_SetBits(GPIOB, GPIO_Pin_12);  // 拉高GPIO，请求主机处理
 }

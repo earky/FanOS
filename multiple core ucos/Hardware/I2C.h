@@ -28,6 +28,9 @@ typedef struct{
 	INT8U prio_recv;
 	INT8U prio_send;
 	
+	uint8_t type_recv;
+	uint8_t type_send;
+	
 	uint8_t  is_first_data;
 	uint8_t  is_busy;
 	

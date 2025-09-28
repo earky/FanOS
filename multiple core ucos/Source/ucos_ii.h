@@ -2021,6 +2021,9 @@ void          OSCtxSw                 (void);
 #define MAX_CORE_NUMS       5
 #define ALL_CORES_ID        0xFF            /* 用于初始化任务时的所有核ID */           
 
+#define SLAVE_DATA_TRANSFER_WAIT_DELAY 1000u /* 外核等待主核处理完数据传输的延时 */
+#define OS_QUEUE_SIZE 6
+
 #define SPECIFIC_TRUE  1
 #define SPECIFIC_FALSE 0
 
@@ -2087,8 +2090,9 @@ extern OS_EVENT* DataTransferSem;
 uint8_t OS_GetStackData(INT8U* prio, uint8_t devAddr, uint8_t* buf, uint16_t* size);
 uint8_t OS_SendStackData(INT8U target_prio, uint8_t devAddr, uint8_t* buf, uint16_t size);
 
-uint8_t OS_GetVariableData(uint8_t devAddr, uint8_t* buf, uint16_t* size, uint32_t* address);
-uint8_t OS_SendVariableData(uint8_t devAddr, uint8_t* buf, uint16_t size, uint32_t address);
+uint8_t OS_GetVariableData(uint8_t devAddr, uint8_t* buf, uint16_t* size, uint32_t* address, uint8_t* type);
+uint8_t OS_SendVariableData(uint8_t devAddr, uint8_t* buf, uint16_t size, uint32_t address, uint8_t type);
+
 uint8_t OS_GetCpuUsage(uint8_t devAddr, uint16_t* count);
 uint8_t OS_MultipleTaskSW(INT8U	  prio, OS_STK* stk, OS_STK  len);
 //uint8_t OS_GetVariableData(uint8_t devAddr, INT8U* target_prio, uint8_t* buf, uint16_t* size, uint32_t* address);
@@ -2096,10 +2100,19 @@ uint8_t OS_TaskSwitchRequest(uint8_t devAddr, INT8U* prio);
 uint8_t OS_IsBusy(uint8_t devAddr, uint8_t* isBusy);
 void OS_MultiCoreTaskInit(void);
 
-typedef struct{
-	uint8_t core_id;
-	uint8_t core_address;
-}OS_Core_Status;
+typedef struct {
+	uint8_t front; // 队首
+	uint8_t rear; // 队尾
+	uint8_t data[OS_QUEUE_SIZE]; // 队列数据
+} OSQueue;
+
+// 初始化队列
+void OSInitQueue(OSQueue* q);
+void OSEnterQueue(OSQueue* q, uint8_t value);
+uint8_t OSOutQueue(OSQueue* q);
+
+extern OSQueue os_queue;
+
 #endif
 
 

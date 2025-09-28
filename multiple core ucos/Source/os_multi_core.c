@@ -11,6 +11,8 @@ OS_EVENT* GetDataSem;
 OS_EVENT* TaskSuspendSem;
 OS_EVENT* DataTransferSem;
 
+OSQueue os_queue;
+
 /* 当某一个中断发生时，将该ID置为对应核发起中断的ID */
 uint8_t SendDataCoreID = 1;
 
@@ -244,7 +246,7 @@ uint8_t OS_SendStackData(INT8U target_prio, uint8_t devAddr, uint8_t* buf, uint1
 		return RES_OK;
 }
 
-uint8_t OS_GetVariableData(uint8_t devAddr, uint8_t* buf, uint16_t* size, uint32_t* address)
+uint8_t OS_GetVariableData(uint8_t devAddr, uint8_t* buf, uint16_t* size, uint32_t* address, uint8_t* type)
 {
 		uint8_t status;
 		
@@ -256,8 +258,8 @@ uint8_t OS_GetVariableData(uint8_t devAddr, uint8_t* buf, uint16_t* size, uint32
 		}
 		
 		// 2.获取数据
-		uint8_t header[4];
-		status = OS_Read2(devAddr, header, buf, 4, size);
+		uint8_t header[5];
+		status = OS_Read2(devAddr, header, buf, 5, size);
 		
 		if(status)
 		{
@@ -265,19 +267,28 @@ uint8_t OS_GetVariableData(uint8_t devAddr, uint8_t* buf, uint16_t* size, uint32
 		}
 		
 		// 解析地址
-		for(uint8_t i = 0;i<4;i++){
-			*address |= (header[i] << 24);
-			// 最后处理完不需要右移
-			if(i != 3){
-				*address = *address >> 8;
-			}
-		}
+		char str[20];
+		*address = (header[3] << 24) |
+							 (header[2] << 16) |
+							 (header[1] << 8)  |
+							 (header[0] << 0);
+//		for(uint8_t i = 0;i<4;i++){
+//			*address |= (header[i] << 24);
+//			// 最后处理完不需要右移
+//			if(i != 3){
+//				*address = *address >> 8;
+//			}
+//		}
 		
-		// 解析目标优先级
+		
+		
+		// 解析数据的类型
+		*type = header[4];
+		
 		return RES_OK;
 }
 
-uint8_t OS_SendVariableData(uint8_t devAddr, uint8_t* buf, uint16_t size, uint32_t address)
+uint8_t OS_SendVariableData(uint8_t devAddr, uint8_t* buf, uint16_t size, uint32_t address, uint8_t type)
 {
 		uint8_t status;
 		uint8_t header[6];
@@ -465,4 +476,24 @@ void OS_MultiCoreTaskInit(void)
 		}
 }
 
+
+// 初始化队列
+void OSInitQueue(OSQueue* q) {
+	q->front = 0;
+	q->rear  = 0;
+	for(uint8_t i=0;i<OS_QUEUE_SIZE;i++){
+			q->data[i] = 0;
+	}
+}
+
+void OSEnterQueue(OSQueue* q, uint8_t value) {
+	q->data[q->rear] = value;
+	q->rear = (q->rear + 1) % OS_QUEUE_SIZE;
+}
+
+uint8_t OSOutQueue(OSQueue* q) {
+	uint8_t out = q->data[q->front];
+	q->front = (q->front + 1) % OS_QUEUE_SIZE;
+	return out;
+}
 #endif
