@@ -232,9 +232,6 @@ void  Get_Variable_Data_TXE_Handler(void)
 				break;
 			default:
 				I2C2->DR = iflag.ptr_send[iflag.idx_send - 7];
-				if(iflag.idx_send - 6 == iflag.size_send){
-						GPIO_ResetBits(GPIOB, GPIO_Pin_12);
-				}
 				break;
 		}
 		iflag.idx_send ++;
@@ -243,7 +240,6 @@ void  Get_Variable_Data_TXE_Handler(void)
 // SEND_VARIABLE_DATA
 void Send_Variable_Data_RXNE_Handler(uint32_t data)
 {	
-		char str[20];
 		static uint8_t size_h, size_l;
 		static uint32_t address;
 		switch(iflag.idx_recv){
@@ -268,9 +264,14 @@ void Send_Variable_Data_RXNE_Handler(uint32_t data)
 				break;
 			case 7:
 				iflag.type_recv = data;
+				//sprintf(str, "type:%u, address:%u, size:%u\n", data, address, iflag.size_recv);
+				//Serial_SendString(str);
 				break;
 			default:
 				iflag.ptr_recv[iflag.idx_recv - 8] = data;
+				if(iflag.idx_recv - 7 == iflag.size_recv){
+						OSSemPost(DataTransferSem);
+				}
 				break;
 		}
 		

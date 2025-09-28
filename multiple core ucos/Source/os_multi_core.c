@@ -16,7 +16,7 @@ OSQueue os_queue;
 /* 当某一个中断发生时，将该ID置为对应核发起中断的ID */
 uint8_t SendDataCoreID = 1;
 
-uint8_t OSCoreID = 0;
+uint8_t OSCoreID = 1;
 
 //uint8_t OSDevAddrs[] = {I2C_MASTER_ADDRESS, I2C_SLAVE_ADDRESS};
 uint8_t OSDevAddrs[] = {I2C_MASTER_ADDRESS, I2C_SLAVE_ADDRESS};
@@ -290,24 +290,45 @@ uint8_t OS_GetVariableData(uint8_t devAddr, uint8_t* buf, uint16_t* size, uint32
 
 uint8_t OS_SendVariableData(uint8_t devAddr, uint8_t* buf, uint16_t size, uint32_t address, uint8_t type)
 {
+		char str[60];
 		uint8_t status;
-		uint8_t header[6];
+		uint8_t header[7];
 		
+		Serial_SendString("OS_SendVariableData\n");
+		sprintf(str, "size:%u\naddress:%u\ntype:%u\n",size, address, type);
+		Serial_SendString(str);
 		header[0] = (size >> 8) & 0x00FF;
 		header[1] = (size) & 0x00FF;
 	
-		for(uint8_t i = 0; i < 4; i++){
-				header[i + 2] = address & 0x000000FF;
+		for(uint8_t i = 2; i < 6; i++){
+				header[i] = address & 0x000000FF;
 				address = address >> 8;
 		}
 		
+		
+		header[6] = type;
 		//header[6] = prio;
 		
-		status  = OS_Write2(devAddr, SEND_VARIABLE_DATA, header, buf, 6, size);
+		status  = OS_Write2(devAddr, SEND_VARIABLE_DATA, header, buf, 7, size);
+		
+		
+		
+		for(int i=0;i<7;i++){
+				sprintf(str, "%x ", header[i]);
+				Serial_SendString(str);
+		}
+		Serial_SendString("\n");
+		
 		if(status)
 		{
+				sprintf(str, "err:%x\n", status);
+				Serial_SendString(str);
 				return status;
 		}
+		
+		
+		
+		
 		
 		return RES_OK;
 }

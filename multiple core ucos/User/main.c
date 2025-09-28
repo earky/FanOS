@@ -55,8 +55,8 @@ uint8_t Data_Transfer_Buffer[512];
 
 //char sstr[10];
 
-uint8_t tempData[] = {1,2,3,4,5,6,7,8,9};
-//uint8_t tempData[] = {9,8,7,6,5,4,3,2,1};
+//uint8_t tempData[] = {1,2,3,4,5,6,7,8,9};
+uint8_t tempData[] = {9,8,7,6,5,4,3,2,1};
 int id = 1;
 
 void OS_Data_Transfer_Switch_Callback(uint8_t type){
@@ -332,7 +332,7 @@ void OS_Multi_Core_Sched(void* p_arg){
 												OS_STK  tmps = size/4;
 												sprintf(str, " > %x %u\n", tmp[tmps - 2], tmps); 
 												Serial_SendString(str);
-												/* 拷贝栈数据 */
+												/* 拷贝栈 数据 */
 												OS_ENTER_CRITICAL();
 												OS_MultipleTaskSW(prio, (OS_STK*)BufferPtr, size/4);
 												OS_EXIT_CRITICAL();
@@ -352,9 +352,13 @@ void OS_Multi_Core_Sched(void* p_arg){
 										}
 								}
 						}
-
+						
+						
+						
 						/* 延时 */
 						OSTimeDly(OS_MULTI_CORE_SCHED_DELAY);
+						Serial_SendString(">> Send Variable Data\n");
+						OS_SendVariableData(OSDevAddrs[1], tempData, sizeof(tempData), (uint32_t)tempData, 0);
 				}
 			
 		}else	{	/* 外核的调度，通过信号量，接收到数据之后则进行任务切换 */
@@ -380,7 +384,7 @@ void OS_Multi_Core_Sched(void* p_arg){
 						iflag.ptr_send = tempData;
 						iflag.size_send = sizeof(tempData);
 					
-						Slave_SendData();
+						//Slave_SendData();
 						/* test code */
 				}
 		}
