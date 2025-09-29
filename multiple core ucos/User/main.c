@@ -7,7 +7,7 @@
 #include "GPIO.h"
 #include "Serial.h"
 #include "SPI.h"
-#include <string.h>
+
 int ID = 0;
 char str[512] = "123\n";
 
@@ -46,12 +46,10 @@ int mainttt(){
 
 OS_STK Task_PWM_Led_STK[128];
 OS_STK Task_Serial_STK[128];
-OS_STK Task_Multi_Core_Sched_STK[128];
-OS_STK Task_Multi_Core_Suspend_STK[128];
-OS_STK Task_Multi_Core_Data_Transfer_STK[128];
 
-uint8_t Task_Switch_Buffer[512];
-uint8_t Data_Transfer_Buffer[512];
+
+//uint8_t Task_Switch_Buffer[512];
+
 
 //char sstr[10];
 
@@ -59,110 +57,7 @@ uint8_t Data_Transfer_Buffer[512];
 uint8_t tempData[] = {9,8,7,6,5,4,3,2,1};
 int id = 1;
 
-void OS_Data_Transfer_Switch_Callback(uint8_t type){
-		switch(type){
-			case 0:
-				Serial_SendString("OS_Data_Transfer_Switch_Callback 0\n");
-				for(int i=0;i<9;i++){
-						sprintf(str, "%u ", tempData[i]);
-						Serial_SendString(str);
-				}
-				Serial_SendString("\n");
-				break;
-			default:
-			
-				break;
-		}
-}
 
-void OS_Multi_Core_Task_Suspend(void* p_arg){
-		if(OSCoreID == 0){
-				/* 主核不需要该任务 */
-				OSTaskDel(OS_MULTI_SUSPEND_PRIO);
-		}else{
-				INT8U err;
-				/* 外核在接收到信号量之后需要将对应的任务挂起 */
-				while(1){
-						OSSemPend(TaskSuspendSem, 0, &err);
-						/* 如果不为系统任务，则挂起，否则不挂起 */
-						if(!IS_OS_TASK(OSSuspendTaskPrio)){
-								OSTaskSuspend(OSSuspendTaskPrio);
-						}
-						
-						iflag.is_busy = 0;
-				}
-		}
-}
-
-void OS_Multi_Core_Data_Transfer(void* p_arg){
-#if OS_CRITICAL_METHOD == 3u                               /* Allocate storage for CPU status register     */
-    OS_CPU_SR  cpu_sr = 0u;
-#endif
-		//uint8_t OS_GetVariableData(uint8_t devAddr, INT8U* target_prio, uint8_t* buf, uint16_t* size, uint32_t* address)
-	
-		/* 主核进行数据的转发 */
-		if(OSCoreID == 0){
-				INT8U err;
-				INT8U prio;
-				uint8_t status;
-				uint16_t size;
-				uint32_t address;
-				uint8_t type;
-				uint8_t tmpDeAddr;
-				while(1){
-						OSSemPend(DataTransferSem, 0, &err);
-						
-						Serial_SendString("Data Transfer start\n");
-					
-						OS_ENTER_CRITICAL();
-						tmpDeAddr = OSOutQueue(&os_queue);
-						status = OS_GetVariableData(tmpDeAddr, Data_Transfer_Buffer, &size, &address, &type);
-						OS_EXIT_CRITICAL();
-						
-						sprintf(str, "tempaddr:%x, addr:%x, size:%u, type:%u\n", tempData, address, size, type);
-						Serial_SendString(str);
-					
-						for(int i=0;i<size;i++){
-								sprintf(str, "%u ", Data_Transfer_Buffer[i]);
-								Serial_SendString(str);
-						}
-						Serial_SendString("\n");
-						
-						/* test code */
-						for(uint8_t i=1;i<OSDevNums;i++){
-								/* 原地址不更改 */
-								if(OSDevAddrs[i] == tmpDeAddr)
-										continue;
-							
-								OS_ENTER_CRITICAL();
-								status = OS_SendVariableData(OSDevAddrs[i], Data_Transfer_Buffer, size, address, type);
-								OS_EXIT_CRITICAL();
-						}
-						// 拷贝到本地地址
-						memcpy((uint8_t*) address, Data_Transfer_Buffer, size);
-						
-						OS_Data_Transfer_Switch_Callback(type);
-				}
-		}else{
-				INT8U err;
-				uint8_t type;
-				while(1){
-						/* 回调函数 */
-						OSSemPend(DataTransferSem, 0, &err);
-						
-						OS_ENTER_CRITICAL();
-						type = iflag.type_recv;
-						OS_EXIT_CRITICAL();
-						OS_Data_Transfer_Switch_Callback(type);
-					
-				}
-				
-				
-				
-				//OSTaskDel(OS_MULTI_DATA_PRIO);
-		
-		}
-}
 
 /* 
 							Task switch
@@ -171,233 +66,7 @@ void OS_Multi_Core_Data_Transfer(void* p_arg){
 		}
 */
 
-void OS_Multi_Core_Sched(void* p_arg){
-	
-#if OS_CRITICAL_METHOD == 3u                               /* Allocate storage for CPU status register     */
-    OS_CPU_SR  cpu_sr = 0u;
-#endif
-		
-		OS_MultiCoreTaskInit();
-	
-		/* 主核的调度 */
-		if(OSCoreID == 0){
-				uint8_t min_id = 0x00;
-				uint8_t max_id = 0x00;
-				uint16_t min_count = 0xFFFF;
-				uint16_t max_count = 0x0000;
-				uint16_t count = 0;
-				uint8_t status;
-			
-				while(1){
-						/* 将主核设置为当前的参数 */
-						min_id = max_id = 0;
-						OS_ENTER_CRITICAL();
-						min_count = max_count = OSTCBPrioTbl[OS_TASK_IDLE_PRIO]->OSTCBCountSend;
-						OS_EXIT_CRITICAL();
-					
-						/* 遍历外核的CPU占用率 */
-						for(uint8_t pos = 1; pos<OSDevNums;pos++){
-								OS_ENTER_CRITICAL();
-								status = OS_GetCpuUsage(OSDevAddrs[pos], &count);
-								sprintf(str, "> count:%u\n", count);
-								Serial_SendString(str);
-								OS_EXIT_CRITICAL();
-								if(status != RES_OK){
-										Serial_SendString("not okk\n");
-										continue;
-								}
-								if(count < min_count){
-										min_id = pos;
-										min_count	 = count;
-								}else if(count > max_count){
-										max_id = pos;
-										max_count = count;
-								}
-						}
-						
-						
-						sprintf(str, "\n\nMIN_COUNT:%u \nMIN_ID:%u \nMAX_COUNT:%u \nMAX_ID:%u\n\n",
-							min_count, min_id, max_count, max_id);
-						Serial_SendString(str);
 
-						OS_TCB* ptcb = OSTCBList;
-						while (ptcb->OSTCBPrio != OS_TASK_IDLE_PRIO){
-								OS_ENTER_CRITICAL(); 
-								
-								//ptcb->OSTCBCountSend = ptcb->OSTCBCountNow;
-								//ptcb->OSTCBCountNow = 0;
-								
-								/* set the min count & prio, the specific task is not participating in multi core schedul 
-								 * the suspend task is not allowed to be the min count & prio				
-								 */
-								if(!ptcb->OSTCBIsSpecific 
-										&& (ptcb->OSTCBStat & OS_STAT_SUSPEND) == OS_STAT_RDY){
-										sprintf(str,"> prio:%u\n", ptcb->OSTCBPrio);
-										Serial_SendString(str);
-								}
-								
-								ptcb = ptcb->OSTCBNext;                        /* Point at next TCB in TCB list                */
-								OS_EXIT_CRITICAL();
-						}
-						
-						
-						
-						
-						/* 进行调度,仅在插值大于我们设置的间隔计数才进行调度 */
-						if(max_count - min_count > DIFF_COUNT){
-								Serial_SendString("task_switch\n");
-								INT8U prio;
-								INT8U err;
-								uint16_t size;
-								uint8_t* BufferPtr;
-							
-								if(OSCoreID == min_id){	/* 当前最大占用率为主核，将主核的任务调度出去 */
-										OS_ENTER_CRITICAL();
-										prio = OSMinCountPrio;
-										OS_EXIT_CRITICAL();
-										
-										/* 如果为0或者是IDLE任务直接延时＋Continue */
-										if(IS_OS_TASK(prio)){
-												OSTimeDly(OS_MULTI_CORE_SCHED_DELAY);
-												continue;
-										}
-										
-										/* 暂停主核占用率最小的任务 */
-										err = OSTaskSuspend(prio);	
-										/* 设置Stack栈指针和长度 */
-										OS_TCB* ptcb = OSTCBPrioTbl[prio];
-										BufferPtr = (uint8_t*)ptcb->OSTCBStkPtr;
-										size = (ptcb->OSTCBStkBasePtr - ptcb->OSTCBStkPtr + 1u) * 4;
-									
-										sprintf(str, "\n prio:%u \nsize:%u \n", prio, size);
-										Serial_SendString(str);
-										
-										Serial_SendString("Main Core --> ");
-										
-								}else{	/* 当前最大占用率为外核，将外核的任务调度进主核，暂存在RAM中 */
-										Serial_SendString("test\n");
-										OS_ENTER_CRITICAL();
-										// OS_TaskSwitchRequest(&prio, OSDevAddrs[min_id]);
-										// if(IS_OS_TASK(prio) delay continue;
-										// TimeOut = 10;
-										// OS_BusyWait(&is_busy, OSDevAddrs[min_id]) delay
-										// if(!TimeOut) delay continue;
-										/* test */
-										status = OS_TaskSwitchRequest(OSDevAddrs[min_id], &prio);
-										if(status != RES_OK){
-											/* 打印错误信息 */
-											Serial_SendString("Multi Core Schedule ERROR!\n");
-										}	
-										sprintf(str, "> Request prio is %u\n", prio);
-										Serial_SendString(str);
-										uint8_t isBusy = 1;
-										while(isBusy){
-												status = OS_IsBusy(OSDevAddrs[min_id], &isBusy);
-												Serial_SendString("isBusy!\n");
-												OSTimeDly(10u);
-										}
-									
-										/* test */
-										/* 获取对应id核的栈，并设置栈指针 */
-										status = OS_GetStackData(&prio, OSDevAddrs[min_id], Task_Switch_Buffer, &size);
-										BufferPtr = Task_Switch_Buffer;
-										OS_EXIT_CRITICAL();
-										
-										sprintf(str, "\n prio:%u \nsize:%u \n", prio, size);
-										Serial_SendString(str);
-										OS_STK* tmp = (OS_STK*) BufferPtr;
-										OS_STK  tmps = size / 4;
-										for(uint16_t i=0;i<tmps;i++){
-												sprintf(str, "%#x ", tmp[i]);
-												Serial_SendString(str);
-										}
-										Serial_SendString("\n");
-										
-										Serial_SendString("Other Core --> ");
-								}
-								
-								if(status != RES_OK){
-										/* 打印错误信息 */
-										Serial_SendString("Multi Core Schedule ERROR!\n");
-								}else if(IS_OS_TASK(prio)){
-									/* 如果对应的优先级为IDLE优先级，则不能进行任务调度 */
-										Serial_SendString("IDLE or Multi_Schedule is not allowed to schedule\n");
-								}
-								else{
-									/* 将栈数据传送至到目前占用率最小的CPU */
-										if(OSCoreID == max_id){ /* 当前最小的id为主核，则无需发送栈，直接进行拷贝即可 */
-												Serial_SendString("Main Core\n");
-												
-												OS_STK* tmp = (OS_STK*)BufferPtr;
-												OS_STK  tmps = size/4;
-												sprintf(str, " > %x %u\n", tmp[tmps - 2], tmps); 
-												Serial_SendString(str);
-												/* 拷贝栈 数据 */
-												OS_ENTER_CRITICAL();
-												OS_MultipleTaskSW(prio, (OS_STK*)BufferPtr, size/4);
-												OS_EXIT_CRITICAL();
-												/* 恢复对应的任务 */
-												OSTaskResume(prio);
-										}else{		/* 当前最小的id为外核，需要将栈数据传输出去 */
-												Serial_SendString("Other Core\n");
-												OS_ENTER_CRITICAL();
-												status = OS_SendStackData(prio, OSDevAddrs[max_id], BufferPtr, size);
-												OS_EXIT_CRITICAL();
-													
-												if( status != RES_OK ) {
-														Serial_SendString("task switch to other core failed\n");
-												}else{
-														
-												}
-										}
-								}
-						}
-						
-						
-						
-						/* 延时 */
-						OSTimeDly(OS_MULTI_CORE_SCHED_DELAY);
-						Serial_SendString(">> Send Variable Data\n");
-						OS_SendVariableData(OSDevAddrs[1], tempData, sizeof(tempData), (uint32_t)tempData, 0);
-				}
-			
-		}else	{	/* 外核的调度，通过信号量，接收到数据之后则进行任务切换 */
-				INT8U err;
-				INT8U prio;
-				uint16_t size;
-			
-				//OSTaskSuspend(4);
-				while(1){
-						OSSemPend(GetStackSem, 0, &err);
-												
-						/* 拷贝到任务栈 */
-						
-						prio = iflag.prio_recv;
-						size = iflag.size_recv;
-						
-	
-						OS_MultipleTaskSW(prio, (OS_STK*)Task_Switch_Buffer, size/4);
-						OSTaskResume(prio);
-					
-					
-						/* test code */
-						iflag.ptr_send = tempData;
-						iflag.size_send = sizeof(tempData);
-					
-						//Slave_SendData();
-						/* test code */
-				}
-		}
-}
-
-void OS_Multi_Core_Data_Copy(void* p_arg){
-		
-		while(1){
-				
-				
-		
-		}
-}
 
 void PWM_Led(void * p_arg){
 		
@@ -527,26 +196,11 @@ int main(void)
 	Serial_Init();	//Serial初始化
 	
 
-	OSInitQueue(&os_queue);
-	
-	if(OSCoreID == 0){
-		I2C2_Master_Init();
-		GPIO_EXTI_Init();
-	}
-	else{
-		I2C2_Slave_Init(I2C_SLAVE_ADDRESS);
-		Slave_GPIO_Init();
-	}
 	
 	Serial_SendString("hello\n");
 
 	OSInit();
-	
-	GetStackSem = OSSemCreate(0);
-	SendDataSem = OSSemCreate(0);
-	GetDataSem  = OSSemCreate(0); 
-	TaskSuspendSem = OSSemCreate(0);
-	DataTransferSem = OSSemCreate(0);
+
 	
 	OSTaskCreate(PWM_Led,           (void *)0, &Task_PWM_Led_STK[127] , 4, 0 ,SPECIFIC_FALSE);
 	
@@ -570,9 +224,6 @@ int main(void)
 	//OSTaskCreate(Serial_Send_Stack, (void *)0, &Task_Serial_STK[127]  , 4);
 	OSTaskCreate(Serial_Send_Count, (void *)0, &Task_Serial_STK[127]  , 5, 0, SPECIFIC_TRUE);
 	//if(OSCoreID == 0)
-	OSTaskCreate(OS_Multi_Core_Sched, (void*)0, &Task_Multi_Core_Sched_STK[127], 0, ALL_CORES_ID, SPECIFIC_TRUE);
-	OSTaskCreate(OS_Multi_Core_Task_Suspend, (void*)0, &Task_Multi_Core_Suspend_STK[127], 1, ALL_CORES_ID, SPECIFIC_TRUE);
-	OSTaskCreate(OS_Multi_Core_Data_Transfer, (void*)0, &Task_Multi_Core_Data_Transfer_STK[127], 2, ALL_CORES_ID, SPECIFIC_TRUE);
 	SysTick_Config(2000u);
 	OSStart();
 	return 0;

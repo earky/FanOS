@@ -42,15 +42,11 @@ void EXTI15_10_IRQHandler(void)
     // 检查是否是EXTI12的中断
     if (EXTI_GetITStatus(EXTI_Line12) != RESET)
     {
-        // 处理数据（此处替换为您的实际数据处理代码）
-        
-        // 处理完成后，拉低GPIO（通知从机可以发送新数据）
-        //GPIO_ResetBits(GPIOB, GPIO_Pin_12);
-				//Serial_SendString(">>> IQ\n");
+				/* 释放信号量 */
 				OSSemPost(DataTransferSem);
+				/* 将对应的核I2C地址入队 */
 				OSEnterQueue(&os_queue, OSDevAddrs[1]);
-				//Serial_SendString(">> test\n");
-        // 清除中断标志位
+				// 清除中断标志位
         EXTI_ClearITPendingBit(EXTI_Line12);
     }
 }
@@ -75,12 +71,7 @@ void Slave_GPIO_Init(void)
 
 // 从机端：发送数据函数（PB12）
 void Slave_SendData(void)
-{
-//    // 检查主机是否已处理完上一次数据（GPIO为低电平）
-//    while (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_12) == Bit_RESET) 
-//    {
-//					OSTimeDly(SLAVE_DATA_TRANSFER_WAIT_DELAY);
-//    }
-		GPIO_ResetBits(GPIOB, GPIO_Pin_12);
+{		
+		GPIO_ResetBits(GPIOB, GPIO_Pin_12);// 先拉低GPIO
 		GPIO_SetBits(GPIOB, GPIO_Pin_12);  // 拉高GPIO，请求主机处理
 }

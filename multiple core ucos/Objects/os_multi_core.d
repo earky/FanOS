@@ -36,3 +36,5 @@
 .\objects\os_multi_core.o: C:\download\Keil5\ARM\ARMCC\Bin\..\include\stdio.h
 .\objects\os_multi_core.o: .\Ports\os_cpu.h
 .\objects\os_multi_core.o: .\Source\os_trace.h
+.\objects\os_multi_core.o: .\Hardware\GPIO.h
+.\objects\os_multi_core.o: C:\download\Keil5\ARM\ARMCC\Bin\..\include\string.h

@@ -40,7 +40,8 @@ typedef struct{
 extern uint8_t I2C_Address[3];
 extern I2C_Flag iflag;
 
-void I2C_Master_Init(void);
+void I2C2_Master_Init(void);
+void I2C2_Slave_Init(uint8_t address);
 uint8_t I2Cx_Write(uint8_t devAddr, uint8_t *pData, uint16_t len);
 uint8_t I2Cx_Read(uint8_t devAddr, uint8_t *pData, uint16_t len);
 void I2C_Slave_Init(uint8_t address);

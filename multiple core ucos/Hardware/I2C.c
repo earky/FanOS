@@ -3,10 +3,7 @@
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_rcc.h"
 #include "I2C.h" 
-//#include "ucos_ii.h"
 
-uint8_t I2C_Address[3] = {I2C_MASTER_ADDRESS ,I2C_SLAVE_ADDRESS1, I2C_SLAVE_ADDRESS2};
-//OS_STK* OSStackPtrTbl[64];
 I2C_Flag iflag;
 
 void I2C_Flag_Init(I2C_Flag* iflag)
@@ -19,11 +16,6 @@ void I2C_Flag_Init(I2C_Flag* iflag)
 		iflag->mode = 0;
 }
 
-// 全局变量
-uint8_t i2c_ram[256];           // 从机数据存储器
-volatile uint8_t i2c_ram_index; // 当前RAM索引
-volatile uint8_t i2c_rx_data;   // 接收到的数据
-volatile uint8_t i2c_tx_data;   // 要发送的数据
 volatile uint8_t i2c_state;     // I2C状态机状态
 
 // 状态定义
@@ -85,59 +77,32 @@ void I2C2_Slave_Init(uint8_t address)
 		I2C_Flag_Init(&iflag);
 }
 
-// I2C2 事件中断处理
-OS_STK Stack[] = {
-0000,0x2710,0000,0x7070707,0x8080808,0x9090909,0x10101010,
-0x11111111,0xfffffffd,0000,0x20000295,0x40013800,0x80,0x12121212,
-0x800152d,0x800152c,0x21000000,0x6e,0x5050505,0x6060606,0x800228b,0000
-};
-uint16_t j = 0;
-
-
-//uint16_t idx = 0;
-//uint8_t Mode = 0;
-//uint8_t Rxne_First_Data = 1;
-//uint8_t* ptr = NULL;
-//uint16_t size = 0;
-char sstr[30];
 void  Clear_Flag(void)
 {
 		i2c_state = I2C_STATE_IDLE; // 重置状态机
 		iflag.is_first_data = 1;
 		iflag.idx_recv = iflag.idx_send = 0;
 }
-char ssstr[30];
+
+/**
+	*	外核实现相的协议
+	*/	
 // GET_STACK_DATA
-char temp[30] = "abcababasdgasdgasdg";
 void  Get_Stack_Data_RXNE_Handler(uint32_t data)
 {
 #if OS_CRITICAL_METHOD == 3u                               /* Allocate storage for CPU status register     */
     OS_CPU_SR  cpu_sr = 0u;
 #endif
-		INT8U MinPrio;
+	
 		OS_TCB* ptcb;
-		INT8U IsOSIntNesting;
 		
-		// MinPrio = OSSuspendTaskPrio;
-		//IsOSIntNesting = OSIntNesting;
-		
-		
+		OS_ENTER_CRITICAL();
 		ptcb = OSTCBPrioTbl[OSSuspendTaskPrio];
+		OS_EXIT_CRITICAL();
+	
 		iflag.ptr_send = (uint8_t *)ptcb->OSTCBStkPtr; 
 		iflag.size_send = (ptcb->OSTCBStkBasePtr - ptcb->OSTCBStkPtr + 1u) * 4;
 		iflag.prio_send = OSSuspendTaskPrio;
-	
-//		/* 任务如果在中断过程中是不允许调度的 */
-//		if(OSIntNesting){
-//				iflag.ptr_send = (uint8_t *)temp; 
-//				iflag.size_send = 8;
-//				iflag.prio_send = 0;
-//		}else{	/* 不是中断过程才允许调度 */
-//				/* 中断过程不允许进行任务挂起操作 */
-//				OSTaskSuspend(MinPrio);
-//				
-//				iflag.prio_send = MinPrio;
-//		}
 }
 
 void  Get_Stack_Data_TXE_Handler(void)
@@ -176,23 +141,16 @@ void  Send_Stack_Data_RXNE_Handler(uint32_t data)
 			case 2:
 				size_l = data;
 				iflag.size_recv = (size_h << 8) | size_l;
-				//sprintf(ssstr, ">> rcv:%d\n", iflag.size_recv);
-				//Serial_SendString(ssstr);
 				break;
 			case 3:
 				iflag.prio_recv = (INT8U) data;
 			  iflag.ptr_recv  = Task_Switch_Buffer;
 				break;
 			default:
-//				sprintf(ssstr, "index:%d\n", iflag.idx_recv - 4);
-//				Serial_SendString(ssstr);
 				iflag.ptr_recv[iflag.idx_recv - 4] = (uint8_t)data;
 				if(iflag.idx_recv - 3 == iflag.size_recv){
 						OSSemPost(GetStackSem);
-				}
-				//sprintf(ssstr, "%#x ",data);
-				//Serial_SendString(ssstr);
-				
+				}				
 				break;
 		}
 		iflag.idx_recv ++;
@@ -264,8 +222,6 @@ void Send_Variable_Data_RXNE_Handler(uint32_t data)
 				break;
 			case 7:
 				iflag.type_recv = data;
-				//sprintf(str, "type:%u, address:%u, size:%u\n", data, address, iflag.size_recv);
-				//Serial_SendString(str);
 				break;
 			default:
 				iflag.ptr_recv[iflag.idx_recv - 8] = data;
@@ -377,27 +333,6 @@ void Is_Busy_TXE_Handler(void)
 		}
 		iflag.idx_send ++;
 }
-// TASK_ACTIVATE
-void Task_Activate_RXNE_Handler(uint32_t data)
-{
-		
-}
-
-void Task_Activate_TXE_Handler(void)
-{
-
-}
-
-// TASK_DISACTIVATE
-void Task_Disactivate_RXNE_Handler(uint32_t data)
-{
-		
-}
-
-void Task_Disactivate_TXE_Handler(void)
-{
-
-}
 
 void I2C2_EV_IRQHandler(void)
 {	
@@ -438,12 +373,6 @@ void I2C2_EV_IRQHandler(void)
 								case GET_CPU_USAGE:
 									Get_CPU_Usage_TXE_Handler();
 									break;
-								case TASK_ACTIVATE:
-									Task_Activate_TXE_Handler();
-									break;
-								case TASK_DISACTIVATE:
-									Task_Disactivate_TXE_Handler();
-									break;
 								case TASK_SWITCH_REQUEST:
 									Task_Switch_Request_TXE_Handler();
 									break;
@@ -482,12 +411,6 @@ void I2C2_EV_IRQHandler(void)
 							case GET_CPU_USAGE:
 								Get_CPU_Usage_RXNE_Handler(tmp);
 								break;
-							case TASK_ACTIVATE:
-								Task_Activate_RXNE_Handler(tmp);
-								break;
-							case TASK_DISACTIVATE:
-								Task_Disactivate_RXNE_Handler(tmp);
-								break;
 							case TASK_SWITCH_REQUEST:
 								Task_Switch_Request_RXNE_Handler(tmp);
 								break;
@@ -504,14 +427,6 @@ void I2C2_EV_IRQHandler(void)
 				// 正确清除STOPF标志的序列
 				uint32_t tmp = I2C2->SR1; // 读取SR1寄存器（必须操作）
 				I2C2->CR1 |= 0x0000;      // 写入CR1（任何值均可，保持操作序列）
-//				switch(iflag.mode){
-//						case SEND_STACK_DATA:
-//							Send_Stack_Data_STOPF_Handler();
-//							break;
-//						default:
-//							break;
-//				}
-				//Serial_SendString("stopf\n");
 				Clear_Flag();
     }
     else
@@ -530,34 +445,26 @@ void I2C2_ER_IRQHandler(void)
     if(I2C_GetITStatus(I2C2, I2C_IT_BERR))
     {
         I2C_ClearITPendingBit(I2C2, I2C_IT_BERR);
-        Serial_SendString("Bus error detected\n");
-        
+       
         // 执行更彻底的总线恢复
         I2C_Cmd(I2C2, DISABLE);
         // 短暂延迟
-        for(volatile uint32_t i = 0; i < 1000; i++);
-        // 重新初始化I2C
-        //I2C2_Slave_Init();
-    }
+        for(volatile uint32_t i = 0; i < 1000; i++);   
+		}
     
     // 应答错误处理
     if(I2C_GetITStatus(I2C2, I2C_IT_AF))
     {		
-				char str[20];
 				uint32_t sr1 = I2C2->SR1;
-				//sprintf(str, "%x\n", sr1);
-				//Serial_SendString(str);
-        I2C_ClearITPendingBit(I2C2, I2C_IT_AF);
-				Clear_Flag();
-        //Serial_SendString("Acknowledge failure\n");
-    }
+				I2C_ClearITPendingBit(I2C2, I2C_IT_AF);
+				Clear_Flag();    
+		}
     
     // 过载/下溢错误处理
     if(I2C_GetITStatus(I2C2, I2C_IT_OVR))
     {
-        I2C_ClearITPendingBit(I2C2, I2C_IT_OVR);
-        Serial_SendString("Overrun/Underrun error\n");
-    }
+        I2C_ClearITPendingBit(I2C2, I2C_IT_OVR);        
+		}
 }
 
 // I2C2 主机初始化

@@ -2013,108 +2013,219 @@ void          OSCtxSw                 (void);
 // STM32核之间通讯协议的起始类型
 
 
+//#if OS_MULTIPLE_CORE > 0u
+
+//#define USAGE_MAX_COUNT 		10000
+//#define DIFF_COUNT          10
+//#define OS_MULTI_CORE_SCHED_DELAY 100000u		/* 主核调度间隔时间 */
+//#define MAX_CORE_NUMS       5
+//#define ALL_CORES_ID        0xFF            /* 用于初始化任务时的所有核ID */           
+
+//#define SLAVE_DATA_TRANSFER_WAIT_DELAY 1000u /* 外核等待主核处理完数据传输的延时 */
+//#define OS_QUEUE_SIZE 6
+
+//#define SPECIFIC_TRUE  1
+//#define SPECIFIC_FALSE 0
+
+//extern uint8_t Task_Switch_Buffer[512];
+
+//extern uint8_t OSDevAddrs[];
+//extern uint32_t total_count;
+//extern uint8_t OSCoreID;
+//extern uint8_t OSDevNums;
+//extern uint8_t  OSMinCountPrio;	/* record the min count task's prio, this task will be used to multi core auto task switch*/
+//extern uint16_t OSMinCount;
+
+
+//extern uint8_t OSSuspendTaskPrio;
+
+//extern OS_EVENT* GetStackSem;
+//extern OS_EVENT* SendDataSem;
+////extern OS_EVENT* GetDataSem;
+//extern OS_EVENT* TaskSuspendSem;
+//extern OS_EVENT* DataTransferSem;
+
+//// type
+//#define GET_STACK_DATA     0x01
+//#define SEND_STACK_DATA    0x02
+//#define GET_VARIABLE_DATA  0x03 
+//#define SEND_VARIABLE_DATA 0x04
+//#define GET_CPU_USAGE      0x05
+
+//#define TASK_ACTIVATE      0x06
+//#define TASK_DISACTIVATE   0x07
+//#define TASK_ACTIVE_CHECK  0x08
+//#define TASK_ACTIVE_PRIOS  0x09
+
+//#define TASK_SWITCH_REQUEST 0x10
+//#define IS_BUSY             0x11
+
+////require
+//#define REQ_SIZE           0x01
+//#define REQ_PRIO           0x02
+//#define REQ_ADDRESS        0x03
+//#define REQ_DATA           0x04
+//#define REQ_COUNT          0x05 // CPU usage
+////respond
+//#define RES_OK             0x0F
+//#define RES_BUSY           0x02
+//#define NOT_ALLOWED_SWITCH 0x03
+//#define TASK_NOT_ACTIVATE  0x04
+//#define TAST_IS_ACTIVATE   0x05
+//#define PROTOCOL_ERROR     0x06
+//#define STACK_NOT_CREATED  0x07
+
+
+//#define TASK_SWITCH_SUCCESS 0u
+//#define TASK_NOT_EXITS      1u
+//#define TASK_SWITCH_BUFFER_IS_ZERO 2u
+
+//#define OS_MULTI_SCHED_PRIO   0u
+//#define OS_MULTI_SUSPEND_PRIO 1u
+//#define OS_MULTI_DATA_PRIO    2u
+
+//#define OS_BUSY_WAIT_DELAY    10u
+///* 如果是OS任务则返回True，不是则返回False */
+//#define IS_OS_TASK(prio)  ((prio) == OS_MULTI_SCHED_PRIO   || \
+//													 (prio) == OS_MULTI_SUSPEND_PRIO || \
+//													 (prio) == OS_MULTI_DATA_PRIO    || \
+//													 (prio) == OS_TASK_IDLE_PRIO)
+
+//uint8_t OS_GetStackData(INT8U* prio, uint8_t devAddr, uint8_t* buf, uint16_t* size);
+//uint8_t OS_SendStackData(INT8U target_prio, uint8_t devAddr, uint8_t* buf, uint16_t size);
+
+//uint8_t OS_GetVariableData(uint8_t devAddr, uint8_t* buf, uint16_t* size, uint32_t* address, uint8_t* type);
+//uint8_t OS_SendVariableData(uint8_t devAddr, uint8_t* buf, uint16_t size, uint32_t address, uint8_t type);
+
+//uint8_t OS_GetCpuUsage(uint8_t devAddr, uint16_t* count);
+//uint8_t OS_MultipleTaskSW(INT8U	  prio, OS_STK* stk, OS_STK  len);
+////uint8_t OS_GetVariableData(uint8_t devAddr, INT8U* target_prio, uint8_t* buf, uint16_t* size, uint32_t* address);
+//uint8_t OS_TaskSwitchRequest(uint8_t devAddr, INT8U* prio);
+//uint8_t OS_IsBusy(uint8_t devAddr, uint8_t* isBusy);
+//void OS_MultiCoreTaskInit(void);
+//void OSMultiHardwareInit(void);
+
+
+
+//typedef struct {
+//	uint8_t front; // 队首
+//	uint8_t rear; // 队尾
+//	uint8_t data[OS_QUEUE_SIZE]; // 队列数据
+//} OSQueue;
+
+//// 初始化队列
+//void OSInitQueue(OSQueue* q);
+//void OSEnterQueue(OSQueue* q, uint8_t value);
+//uint8_t OSOutQueue(OSQueue* q);
+
+//void OSMultiSemInit(void);
+
+//extern OSQueue os_queue;
+
+//#endif
+
 #if OS_MULTIPLE_CORE > 0u
 
-#define USAGE_MAX_COUNT 		10000
-#define DIFF_COUNT          10
-#define OS_MULTI_CORE_SCHED_DELAY 100000u		/* 主核调度间隔时间 */
-#define MAX_CORE_NUMS       5
-#define ALL_CORES_ID        0xFF            /* 用于初始化任务时的所有核ID */           
+/* =============== 多核调度核心常量定义 =============== */
+#define USAGE_MAX_COUNT           10000u       /* CPU使用率最大计数值 */
+#define DIFF_COUNT                10u          /* 采样计数差值 */
+#define OS_MULTI_CORE_SCHED_DELAY 100000u      /* 主核调度间隔 */
+#define MAX_CORE_NUMS             5u           /* 最大支持核心数 */
+#define ALL_CORES_ID              0xFFu        /* 初始化任务时所有核心ID */
 
-#define SLAVE_DATA_TRANSFER_WAIT_DELAY 1000u /* 外核等待主核处理完数据传输的延时 */
-#define OS_QUEUE_SIZE 6
+/* 外核数据传输相关常量 */
+#define SLAVE_DATA_TRANSFER_WAIT_DELAY 1000u   /* 外核等待主核数据处理的延时 */
+#define OS_QUEUE_SIZE                  6u      /* 任务队列大小 */
 
-#define SPECIFIC_TRUE  1
-#define SPECIFIC_FALSE 0
+/* 逻辑值常量 */
+#define SPECIFIC_TRUE         1u
+#define SPECIFIC_FALSE        0u
 
-extern uint8_t OSDevAddrTbl[64];
-extern uint8_t Task_Switch_Buffer[512];
-extern OS_STK* OSStackPtrTbl[64];
-extern uint8_t OSDevAddrs[];
-extern uint32_t total_count;
-extern uint8_t OSCoreID;
-extern uint8_t OSDevNums;
-extern uint8_t  OSMinCountPrio;	/* record the min count task's prio, this task will be used to multi core auto task switch*/
-extern uint16_t OSMinCount;
+/* =============== 多核任务类型定义 =============== */
+/* 任务类型标识 */
+#define GET_STACK_DATA        0x01u  /* 获取栈数据 */
+#define SEND_STACK_DATA       0x02u  /* 发送栈数据 */
+#define GET_VARIABLE_DATA     0x03u  /* 获取变量数据 */
+#define SEND_VARIABLE_DATA    0x04u  /* 发送变量数据 */
+#define GET_CPU_USAGE         0x05u  /* 获取CPU使用率 */
+#define TASK_SWITCH_REQUEST   0x06u  /* 任务切换请求 */
+#define IS_BUSY               0x07u  /* 检查忙碌状态 */
 
-extern uint8_t DataGetDevAddr;
+#define RES_OK                0x0Fu  /* 响应成功 */
+#define RES_BUSY              0x02u  /* 响应忙碌 */
+#define NOT_ALLOWED_SWITCH    0x03u  /* 不允许切换 */
+#define TASK_NOT_ACTIVATE     0x04u  /* 任务未激活 */
+#define TASK_IS_ACTIVATE      0x05u  /* 任务已激活 */
+#define PROTOCOL_ERROR        0x06u  /* 协议错误 */
+#define STACK_NOT_CREATED     0x07u  /* 栈未创建 */
 
-extern uint8_t SendDataCoreID;
-extern uint8_t OSSuspendTaskPrio;
+/* 任务切换返回状态 */
+#define TASK_SWITCH_SUCCESS        0u
+#define TASK_NOT_EXITS             1u
+#define TASK_SWITCH_BUFFER_IS_ZERO 2u
 
-extern OS_EVENT* GetStackSem;
-extern OS_EVENT* SendDataSem;
-extern OS_EVENT* GetDataSem;
-extern OS_EVENT* TaskSuspendSem;
-extern OS_EVENT* DataTransferSem;
+/* 多核任务优先级 */
+#define OS_MULTI_SCHED_PRIO   0u    /* 调度任务优先级 */
+#define OS_MULTI_SUSPEND_PRIO 1u    /* 挂起任务优先级 */
+#define OS_MULTI_DATA_PRIO    2u    /* 数据传输任务优先级 */
 
-// type
-#define GET_STACK_DATA     0x01
-#define SEND_STACK_DATA    0x02
-#define GET_VARIABLE_DATA  0x03 
-#define SEND_VARIABLE_DATA 0x04
-#define GET_CPU_USAGE      0x05
+#define OS_BUSY_WAIT_DELAY    10u   /* 忙等待延时 */
 
-#define TASK_ACTIVATE      0x06
-#define TASK_DISACTIVATE   0x07
-#define TASK_ACTIVE_CHECK  0x08
-#define TASK_ACTIVE_PRIOS  0x09
+/* =============== 多核任务类型判断 =============== */
+/**
+ * @brief 判断优先级是否为OS多核任务
+ * @param prio 任务优先级
+ * @return TRUE(1) 是OS任务，FALSE(0) 不是
+ */
+#define IS_OS_TASK(prio) ((prio) == OS_MULTI_SCHED_PRIO || \
+                          (prio) == OS_MULTI_SUSPEND_PRIO || \
+                          (prio) == OS_MULTI_DATA_PRIO || \
+                          (prio) == OS_TASK_IDLE_PRIO)
 
-#define TASK_SWITCH_REQUEST 0x10
-#define IS_BUSY             0x11
+/* =============== 外部变量声明 =============== */
+extern uint8_t Task_Switch_Buffer[512];  /* 任务切换缓冲区 */
+extern uint8_t OSDevAddrs[];             /* 设备地址数组 */
+extern uint32_t total_count;             /* 总任务计数 */
+extern uint8_t OSCoreID;                 /* 当前核心ID */
+extern uint8_t OSDevNums;                /* 设备数量 */
+extern uint8_t OSMinCountPrio;           /* 最小计数任务优先级 */
+extern uint16_t OSMinCount;              /* 最小计数 */
+extern uint8_t OSSuspendTaskPrio;        /* 挂起任务优先级 */
 
-//require
-#define REQ_SIZE           0x01
-#define REQ_PRIO           0x02
-#define REQ_ADDRESS        0x03
-#define REQ_DATA           0x04
-#define REQ_COUNT          0x05 // CPU usage
-//respond
-#define RES_OK             0x0F
-#define RES_BUSY           0x02
-#define NOT_ALLOWED_SWITCH 0x03
-#define TASK_NOT_ACTIVATE  0x04
-#define TAST_IS_ACTIVATE   0x05
-#define PROTOCOL_ERROR     0x06
-#define STACK_NOT_CREATED  0x07
+/* 信号量对象 */
+extern OS_EVENT* GetStackSem;            /* 获取栈数据信号量 */
+extern OS_EVENT* SendDataSem;            /* 发送数据信号量 */
+extern OS_EVENT* TaskSuspendSem;         /* 任务挂起信号量 */
+extern OS_EVENT* DataTransferSem;        /* 数据传输信号量 */
 
-#define OS_MULTI_SCHED_PRIO   0u
-#define OS_MULTI_SUSPEND_PRIO 1u
-#define OS_MULTI_DATA_PRIO    2u
-/* 如果是OS任务则返回True，不是则返回False */
-#define IS_OS_TASK(prio)  ((prio) == OS_MULTI_SCHED_PRIO   || \
-													 (prio) == OS_MULTI_SUSPEND_PRIO || \
-													 (prio) == OS_MULTI_DATA_PRIO    || \
-													 (prio) == OS_TASK_IDLE_PRIO)
-
+/* =============== 多核任务接口函数 =============== */
 uint8_t OS_GetStackData(INT8U* prio, uint8_t devAddr, uint8_t* buf, uint16_t* size);
 uint8_t OS_SendStackData(INT8U target_prio, uint8_t devAddr, uint8_t* buf, uint16_t size);
-
 uint8_t OS_GetVariableData(uint8_t devAddr, uint8_t* buf, uint16_t* size, uint32_t* address, uint8_t* type);
 uint8_t OS_SendVariableData(uint8_t devAddr, uint8_t* buf, uint16_t size, uint32_t address, uint8_t type);
-
 uint8_t OS_GetCpuUsage(uint8_t devAddr, uint16_t* count);
-uint8_t OS_MultipleTaskSW(INT8U	  prio, OS_STK* stk, OS_STK  len);
-//uint8_t OS_GetVariableData(uint8_t devAddr, INT8U* target_prio, uint8_t* buf, uint16_t* size, uint32_t* address);
+uint8_t OS_MultipleTaskSW(INT8U prio, OS_STK* stk, OS_STK len);
 uint8_t OS_TaskSwitchRequest(uint8_t devAddr, INT8U* prio);
 uint8_t OS_IsBusy(uint8_t devAddr, uint8_t* isBusy);
-void OS_MultiCoreTaskInit(void);
 
+/* =============== 多核初始化函数 =============== */
+void OS_MultiCoreTaskInit(void);     
+void OSMultiHardwareInit(void);      
+
+/* =============== 队列操作接口 =============== */
 typedef struct {
-	uint8_t front; // 队首
-	uint8_t rear; // 队尾
-	uint8_t data[OS_QUEUE_SIZE]; // 队列数据
+    uint8_t front;  /* 队首 */
+    uint8_t rear;   /* 队尾 */
+    uint8_t data[OS_QUEUE_SIZE]; /* 队列数据 */
 } OSQueue;
 
-// 初始化队列
 void OSInitQueue(OSQueue* q);
 void OSEnterQueue(OSQueue* q, uint8_t value);
 uint8_t OSOutQueue(OSQueue* q);
-
+void OSMultiSemInit(void);
 extern OSQueue os_queue;
 
 #endif
-
 
 #ifdef __cplusplus
 }
