@@ -2136,6 +2136,8 @@ void          OSCtxSw                 (void);
 /* 外核数据传输相关常量 */
 #define SLAVE_DATA_TRANSFER_WAIT_DELAY 1000u   /* 外核等待主核数据处理的延时 */
 #define OS_QUEUE_SIZE                  6u      /* 任务队列大小 */
+#define OS_SEND_DATA_DELAY             10u		 /* 当前一个数据还未传输完成时需要的延时 */
+#define OS_SEND_DATA_TIMEOUT           1000    /* 数据传输的超时常量 */
 
 /* 逻辑值常量 */
 #define SPECIFIC_TRUE         1u
@@ -2150,6 +2152,7 @@ void          OSCtxSw                 (void);
 #define GET_CPU_USAGE         0x05u  /* 获取CPU使用率 */
 #define TASK_SWITCH_REQUEST   0x06u  /* 任务切换请求 */
 #define IS_BUSY               0x07u  /* 检查忙碌状态 */
+#define SEND_DATA_FINISHED    0x08u  /* 发送已经完成发送 */
 
 #define RES_OK                0x0Fu  /* 响应成功 */
 #define RES_BUSY              0x02u  /* 响应忙碌 */
@@ -2158,6 +2161,7 @@ void          OSCtxSw                 (void);
 #define TASK_IS_ACTIVATE      0x05u  /* 任务已激活 */
 #define PROTOCOL_ERROR        0x06u  /* 协议错误 */
 #define STACK_NOT_CREATED     0x07u  /* 栈未创建 */
+#define TIME_OUT              0x08u  /* 超时 */
 
 /* 任务切换返回状态 */
 #define TASK_SWITCH_SUCCESS        0u
@@ -2197,6 +2201,8 @@ extern OS_EVENT* GetStackSem;            /* 获取栈数据信号量 */
 extern OS_EVENT* SendDataSem;            /* 发送数据信号量 */
 extern OS_EVENT* TaskSuspendSem;         /* 任务挂起信号量 */
 extern OS_EVENT* DataTransferSem;        /* 数据传输信号量 */
+extern OS_EVENT *DataTransferQueue;  
+
 
 /* =============== 多核任务接口函数 =============== */
 uint8_t OS_GetStackData(INT8U* prio, uint8_t devAddr, uint8_t* buf, uint16_t* size);
@@ -2207,10 +2213,13 @@ uint8_t OS_GetCpuUsage(uint8_t devAddr, uint16_t* count);
 uint8_t OS_MultipleTaskSW(INT8U prio, OS_STK* stk, OS_STK len);
 uint8_t OS_TaskSwitchRequest(uint8_t devAddr, INT8U* prio);
 uint8_t OS_IsBusy(uint8_t devAddr, uint8_t* isBusy);
+uint8_t OS_SendDataFinished(uint8_t devAddr);
+uint8_t OS_SendData(uint8_t* buf, uint16_t size, uint8_t type);
 
 /* =============== 多核初始化函数 =============== */
 void OS_MultiCoreTaskInit(void);     
 void OSMultiHardwareInit(void);      
+void OSMultiTaskInit(void);
 
 /* =============== 队列操作接口 =============== */
 typedef struct {

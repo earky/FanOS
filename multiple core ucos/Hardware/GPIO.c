@@ -10,7 +10,7 @@ void GPIO_EXTI_Init(void)
     // 2. 配置PB12为输入模式，上拉
     GPIO_InitTypeDef GPIO_InitStructure;
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPD; // 上拉输入
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOB, &GPIO_InitStructure);
     
@@ -36,19 +36,35 @@ void GPIO_EXTI_Init(void)
 
 
 // 中断服务函数（PB12使用EXTI15_10_IRQn）
+char s[20];
+
 void EXTI15_10_IRQHandler(void)
 {
-		
+#if OS_CRITICAL_METHOD == 3u                 /* Allocate storage for CPU status register               */
+    OS_CPU_SR   cpu_sr = 0u;
+#endif
+	
+		OS_ENTER_CRITICAL();
+		OSIntEnter();
+		OS_EXIT_CRITICAL();
+	
     // 检查是否是EXTI12的中断
     if (EXTI_GetITStatus(EXTI_Line12) != RESET)
     {
+				INT8U err;
 				/* 释放信号量 */
-				OSSemPost(DataTransferSem);
+				err = OSQPost(DataTransferQueue, &OSDevAddrs[1]);
+				//err = OSSemPost(DataTransferSem);
 				/* 将对应的核I2C地址入队 */
-				OSEnterQueue(&os_queue, OSDevAddrs[1]);
+				//OSEnterQueue(&os_queue, OSDevAddrs[1]);
 				// 清除中断标志位
+
         EXTI_ClearITPendingBit(EXTI_Line12);
-    }
+    
+				//sprintf(s, ">err:%u\n", err);
+				Serial_SendString("\n!!!!!!!!!!!!!!!!!\n");
+		}
+		OSIntExit();
 }
 
 
@@ -73,5 +89,6 @@ void Slave_GPIO_Init(void)
 void Slave_SendData(void)
 {		
 		GPIO_ResetBits(GPIOB, GPIO_Pin_12);// 先拉低GPIO
+		for(volatile int i=0;i<1000;i++)	 // 适当延时
 		GPIO_SetBits(GPIOB, GPIO_Pin_12);  // 拉高GPIO，请求主机处理
 }

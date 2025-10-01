@@ -12,13 +12,15 @@
 	*/
 
 /* OS核对应的ID号，主核ID号一定为0!!! */
-uint8_t OSCoreID = 1;
+uint8_t OSCoreID = 0;
 
 OS_EVENT* GetStackSem;				//获取堆栈的信号量
 OS_EVENT* SendDataSem;				//发送堆栈的信号量
 OS_EVENT* TaskSuspendSem;			//任务挂起的信号量
 OS_EVENT* DataTransferSem;		//数据传输的信号量
 
+OS_EVENT *DataTransferQueue;  
+void     *QueueTbl[OS_QUEUE_SIZE];
 OSQueue os_queue;							//OS循环队列，主要用于数据传输临时存放对应的外核I2C地址
 
 uint8_t OSDevAddrs[] = {I2C_MASTER_ADDRESS, I2C_SLAVE_ADDRESS};		//通过OSCoreID来访问外核I2C地址，
@@ -525,6 +527,8 @@ void OSMultiSemInit(void)
 		SendDataSem = OSSemCreate(0);
 		TaskSuspendSem = OSSemCreate(0);
 		DataTransferSem = OSSemCreate(0);
+	
+		DataTransferQueue = OSQCreate(&QueueTbl[0], OS_QUEUE_SIZE);
 }
 
 /**
@@ -611,6 +615,7 @@ void OS_Multi_Core_Sched(void* p_arg){
 		
 		/* 任务初始化 */
 		OS_MultiCoreTaskInit();
+		OSTaskDel(0);
 		uint8_t status;
 		/* 延时，防止count全为0的时候开始调度 */
 		OSTimeDly(USAGE_MAX_COUNT);
@@ -780,7 +785,7 @@ void OS_Multi_Core_Task_Suspend(void* p_arg){
   * @brief  FanOS在OS_Multi_Core_Data_Transfer中的回调函数
 	*					当接收到数据的时候，则会触发，可以通过type来触发不同的分支
 	*/
-void OS_Data_Transfer_Switch_Callback(uint8_t type){
+__weak void OS_Data_Transfer_Switch_Callback(uint8_t type){
 		switch(type){
 			case 0:
 				break;
@@ -793,6 +798,7 @@ void OS_Data_Transfer_Switch_Callback(uint8_t type){
 /**
   * @brief  FanOS的数据传输任务，主要是多核间的数据传输和拷贝到本核的ram中
 	*/
+#include "Serial.h"
 void OS_Multi_Core_Data_Transfer(void* p_arg){
 	
 #if OS_CRITICAL_METHOD == 3u                               /* Allocate storage for CPU status register     */
@@ -807,18 +813,35 @@ void OS_Multi_Core_Data_Transfer(void* p_arg){
 				uint32_t address;
 				uint8_t type;
 				uint8_t tmpDeAddr;
+				void* msg;
+				char str[30];
 				while(1){
 						/* 等待信号量 */
-						OSSemPend(DataTransferSem, 0, &err);
+						msg = OSQPend(DataTransferQueue, 0, &err);
+						if (err == OS_ERR_NONE) {
+						
+						}else{
+								sprintf(str, "> err:%u\n", err);
+								Serial_SendString(str);
+								continue;
+						}
+						tmpDeAddr = *((uint8_t*)msg);
+						//OSSemPend(DataTransferSem, 0, &err);
+						//OSTimeDly(100000u);
+						sprintf(str, "DevAddr is %u\n", tmpDeAddr);
+						Serial_SendString(str);
+						
 						
 						/* 获取数据 */
 						OS_ENTER_CRITICAL();
-						tmpDeAddr = OSOutQueue(&os_queue);
+						//tmpDeAddr = OSOutQueue(&os_queue);
+						tmpDeAddr = OSDevAddrs[1];
 						status = OS_GetVariableData(tmpDeAddr, Data_Transfer_Buffer, &size, &address, &type);
 						OS_EXIT_CRITICAL();
 						if(status != RES_OK){
 								continue;
 						}
+						
 						/* 发送数据 */
 						for(uint8_t i=1;i<OSDevNums;i++){
 								/* 获取数据的核不进行发送 */
@@ -838,6 +861,8 @@ void OS_Multi_Core_Data_Transfer(void* p_arg){
 						memcpy((uint8_t*) address, Data_Transfer_Buffer, size);
 						/* 调用回调函数 */
 						OS_Data_Transfer_Switch_Callback(type);
+						
+
 				}
 		}else{
 				INT8U err;
@@ -853,6 +878,54 @@ void OS_Multi_Core_Data_Transfer(void* p_arg){
 						OS_Data_Transfer_Switch_Callback(type);
 					
 				}
+		}
+}
+
+
+uint8_t OS_SendData(uint8_t* buf, uint16_t size, uint8_t type)
+{
+#if OS_CRITICAL_METHOD == 3u                               /* Allocate storage for CPU status register     */
+    OS_CPU_SR  cpu_sr = 0u;
+#endif
+	
+		/* 先拷贝原buf数据，防止中途改变 */
+	
+	  /* 主核直接向所有外核发送数据即可 */
+		if(OSCoreID == 0){
+				OS_ENTER_CRITICAL();
+				memcpy(Data_Transfer_Buffer, buf, size);
+				OS_EXIT_CRITICAL();
+			
+				for(uint8_t i=1;i<OSDevNums;i++){							
+						OS_ENTER_CRITICAL();
+						OS_SendVariableData(OSDevAddrs[i], Data_Transfer_Buffer, size, (uint32_t)buf , type);
+						OS_EXIT_CRITICAL();
+				}	
+				
+		}else{ /* 外核直接将数据放置到iflag中，再触发数据的INT线即可 */
+				uint32_t TimeOut = OS_SEND_DATA_TIMEOUT;
+				/* 当前一个数据未发送完成的时候，需要适当延时 */
+				while(iflag.is_send){
+						if(--TimeOut == 0){
+								Serial_SendString("Time Out\n");
+								iflag.is_send = 0;
+								return TIME_OUT;
+						}
+						OSTimeDly(OS_SEND_DATA_DELAY);
+				}
+				
+				OS_ENTER_CRITICAL();
+				memcpy(Data_Transfer_Buffer, buf, size);
+				/* 设置iflag */
+				iflag.ptr_send = Data_Transfer_Buffer;
+				iflag.address_send = (uint32_t)buf;
+				iflag.size_send = size;
+				iflag.type_send = type;
+				iflag.is_send = 1;
+				OS_EXIT_CRITICAL();
+			
+				/* 触发INT线 */
+				Slave_SendData();
 		}
 }
 

@@ -126,8 +126,6 @@ void  Get_Stack_Data_TXE_Handler(void)
 }
 
 // SEND_STACK_DATA
-
-uint8_t sendstack[128];
 void  Send_Stack_Data_RXNE_Handler(uint32_t data)
 {
 		static uint8_t size_h, size_l;
@@ -164,7 +162,7 @@ void  Send_Stack_Data_TXE_Handler(void)
 // GET_VARIABLE_DATA
 void  Get_Variable_Data_RXNE_Handler(uint32_t data)
 {	
-		
+
 }
 
 void  Get_Variable_Data_TXE_Handler(void)
@@ -173,7 +171,7 @@ void  Get_Variable_Data_TXE_Handler(void)
 		switch(iflag.idx_send){
 			case 0:
 				I2C2->DR = (iflag.size_send >> 8) & 0x00FF;
-				address = (uint32_t)iflag.ptr_send;
+				address = (uint32_t)iflag.address_send;
 				break;
 			case 1:
 				I2C2->DR = iflag.size_send & 0x00FF;
@@ -190,6 +188,9 @@ void  Get_Variable_Data_TXE_Handler(void)
 				break;
 			default:
 				I2C2->DR = iflag.ptr_send[iflag.idx_send - 7];
+				if(iflag.idx_send - 6 == iflag.size_send){
+						iflag.is_send = 0;
+				}
 				break;
 		}
 		iflag.idx_send ++;
@@ -212,8 +213,8 @@ void Send_Variable_Data_RXNE_Handler(uint32_t data)
 				break;
 			case 3:
 			case 4:
-			case 5:
 				address |= (data << 24);
+			case 5:
 				address = address >> 8;
 				break;
 			case 6:
@@ -334,8 +335,19 @@ void Is_Busy_TXE_Handler(void)
 		iflag.idx_send ++;
 }
 
+void Send_Data_Finished_RXNE_Handler(uint32_t data)
+{
+		iflag.is_send = 0;
+}
+
+void Send_Data_Finished_TXE_Handler(void)
+{
+	
+}
+
 void I2C2_EV_IRQHandler(void)
 {	
+		OSIntEnter();
 		uint32_t sr1 = I2C2->SR1;
     // 使用状态标志而不是直接检查事件寄存器
     if(sr1 & I2C_SR1_ADDR)
@@ -379,6 +391,9 @@ void I2C2_EV_IRQHandler(void)
 								case IS_BUSY:
 									Is_Busy_TXE_Handler();
 									break;
+								case SEND_DATA_FINISHED:
+									Send_Data_Finished_TXE_Handler();
+									break;
 								default:
 									break;
 							}
@@ -417,6 +432,9 @@ void I2C2_EV_IRQHandler(void)
 							case IS_BUSY:
 								Is_Busy_RXNE_Handler(tmp);
 								break;
+							case SEND_DATA_FINISHED:
+								Send_Data_Finished_RXNE_Handler(tmp);
+								break;
 							default:
 								break;
 						}
@@ -436,11 +454,14 @@ void I2C2_EV_IRQHandler(void)
         I2C_ClearITPendingBit(I2C2, I2C_IT_SB);
         I2C_ClearITPendingBit(I2C2, I2C_IT_BTF);
     }
+		
+		OSIntExit();
 }
 
 // I2C2 错误中断处理
 void I2C2_ER_IRQHandler(void)
 {
+		OSIntEnter();
     // 总线错误处理
     if(I2C_GetITStatus(I2C2, I2C_IT_BERR))
     {
@@ -465,6 +486,8 @@ void I2C2_ER_IRQHandler(void)
     {
         I2C_ClearITPendingBit(I2C2, I2C_IT_OVR);        
 		}
+		
+		OSIntExit();
 }
 
 // I2C2 主机初始化
@@ -591,8 +614,6 @@ uint8_t I2C2_Read(uint8_t devAddr, uint8_t *data, uint16_t* len)
 		
 		size = (size_h << 8) | size_l;
 		*len = size;
-//		sprintf(sstr, "%d %d %d\n", size_h, size_l, size);
-//		Serial_SendString(sstr);
 		
     // 3. 接收数据
     for(uint16_t i = 0; i < size; i++) {
