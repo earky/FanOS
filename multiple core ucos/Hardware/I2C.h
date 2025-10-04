@@ -4,9 +4,9 @@
 #include "stm32f10x.h"  
 #include "ucos_ii.h"
 // 从机地址定义
-#define I2C_SLAVE_ADDRESS1 0x10   // 7位地址
-#define I2C_SLAVE_ADDRESS2 0x11   // 7位地址
-#define I2C_SLAVE_ADDRESS  0x40 
+#define I2C_SLAVE_ADDRESS1  0x40 
+#define I2C_SLAVE_ADDRESS2  0x30
+
 #define I2C_MASTER_ADDRESS 0x20		//可以用于切换
 
 //uint16_t idx = 0;

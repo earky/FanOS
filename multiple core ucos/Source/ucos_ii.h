@@ -2129,7 +2129,7 @@ void          OSCtxSw                 (void);
 /* =============== 多核调度核心常量定义 =============== */
 #define USAGE_MAX_COUNT           10000u       /* CPU使用率最大计数值 */
 #define DIFF_COUNT                10u          /* 采样计数差值 */
-#define OS_MULTI_CORE_SCHED_DELAY 100000u      /* 主核调度间隔 */
+#define OS_MULTI_CORE_SCHED_DELAY 10000u      /* 主核调度间隔 */
 #define MAX_CORE_NUMS             5u           /* 最大支持核心数 */
 #define ALL_CORES_ID              0xFFu        /* 初始化任务时所有核心ID */
 

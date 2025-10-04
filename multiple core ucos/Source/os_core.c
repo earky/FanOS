@@ -639,7 +639,6 @@ void  OSInit (void)
 #if OS_MULTIPLE_CORE > 0u
 		OSMultiSemInit();				
 		OSMultiHardwareInit();
-		OSInitQueue(&os_queue);
 		OSMultiTaskInit();
 		
 #endif

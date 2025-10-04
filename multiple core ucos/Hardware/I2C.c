@@ -347,7 +347,14 @@ void Send_Data_Finished_TXE_Handler(void)
 
 void I2C2_EV_IRQHandler(void)
 {	
+#if OS_CRITICAL_METHOD == 3u                 /* Allocate storage for CPU status register               */
+    OS_CPU_SR   cpu_sr = 0u;
+#endif
+	
+		OS_ENTER_CRITICAL();
 		OSIntEnter();
+		OS_EXIT_CRITICAL();
+	
 		uint32_t sr1 = I2C2->SR1;
     // 使用状态标志而不是直接检查事件寄存器
     if(sr1 & I2C_SR1_ADDR)
@@ -461,7 +468,14 @@ void I2C2_EV_IRQHandler(void)
 // I2C2 错误中断处理
 void I2C2_ER_IRQHandler(void)
 {
+#if OS_CRITICAL_METHOD == 3u                 /* Allocate storage for CPU status register               */
+    OS_CPU_SR   cpu_sr = 0u;
+#endif
+	
+		OS_ENTER_CRITICAL();
 		OSIntEnter();
+		OS_EXIT_CRITICAL();
+	
     // 总线错误处理
     if(I2C_GetITStatus(I2C2, I2C_IT_BERR))
     {

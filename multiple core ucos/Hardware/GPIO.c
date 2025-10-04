@@ -4,28 +4,31 @@
 
 void GPIO_EXTI_Init(void)
 {
+		return;
     // 1. 使能GPIOB和AFIO时钟（关键修正）
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
     
     // 2. 配置PB12为输入模式，上拉
     GPIO_InitTypeDef GPIO_InitStructure;
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOB, &GPIO_InitStructure);
     
     // 3. 将GPIOB12映射到EXTI12线（关键修正）
-    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource12);
+		GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource12);
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource13);
     
     // 4. 配置EXTI12
     EXTI_InitTypeDef EXTI_InitStructure;
     EXTI_InitStructure.EXTI_Line = EXTI_Line12;
     EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising; // 上升沿触发
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling; // 下降沿触发
     EXTI_InitStructure.EXTI_LineCmd = ENABLE;
     EXTI_Init(&EXTI_InitStructure);
     
-    // 5. 配置中断优先级
+    
+    // 6. 配置中断优先级
     NVIC_InitTypeDef NVIC_InitStructure;
     NVIC_InitStructure.NVIC_IRQChannel = EXTI15_10_IRQn;
     NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
@@ -47,23 +50,25 @@ void EXTI15_10_IRQHandler(void)
 		OS_ENTER_CRITICAL();
 		OSIntEnter();
 		OS_EXIT_CRITICAL();
-	
+		//Serial_SendString("IQ!!!\n");
     // 检查是否是EXTI12的中断
     if (EXTI_GetITStatus(EXTI_Line12) != RESET)
     {
 				INT8U err;
 				/* 释放信号量 */
+				Serial_SendString("IQ1!!!\n");
 				err = OSQPost(DataTransferQueue, &OSDevAddrs[1]);
-				//err = OSSemPost(DataTransferSem);
-				/* 将对应的核I2C地址入队 */
-				//OSEnterQueue(&os_queue, OSDevAddrs[1]);
-				// 清除中断标志位
-
         EXTI_ClearITPendingBit(EXTI_Line12);
-    
-				//sprintf(s, ">err:%u\n", err);
-				Serial_SendString("\n!!!!!!!!!!!!!!!!!\n");
 		}
+		
+		if(EXTI_GetITStatus(EXTI_Line13) != RESET)
+    {
+        INT8U err;
+				/* 释放信号量 */
+			Serial_SendString("IQ2!!!\n");
+				err = OSQPost(DataTransferQueue, &OSDevAddrs[2]);
+        EXTI_ClearITPendingBit(EXTI_Line13);
+    }
 		OSIntExit();
 }
 
