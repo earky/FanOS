@@ -19,7 +19,7 @@ FanOS 是一个基于 uC/OS-II 内核的轻量级多核操作系统，专为嵌�
 
 ### 3.1  物理连接
 
-![image-20251005101322048](C:\Users\ASUS\AppData\Roaming\Typora\typora-user-images\image-20251005101322048.png)
+![image-20251005101322048](Soruce/1.png)
 
 ### **3.2** 软件使用
 
