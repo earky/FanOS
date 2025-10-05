@@ -2010,127 +2010,13 @@ void          OSCtxSw                 (void);
 
 #endif  /* ------------------------ SAFETY_CRITICAL_RELEASE ------------------------ */
 
-// STM32核之间通讯协议的起始类型
-
-
-//#if OS_MULTIPLE_CORE > 0u
-
-//#define USAGE_MAX_COUNT 		10000
-//#define DIFF_COUNT          10
-//#define OS_MULTI_CORE_SCHED_DELAY 100000u		/* 主核调度间隔时间 */
-//#define MAX_CORE_NUMS       5
-//#define ALL_CORES_ID        0xFF            /* 用于初始化任务时的所有核ID */           
-
-//#define SLAVE_DATA_TRANSFER_WAIT_DELAY 1000u /* 外核等待主核处理完数据传输的延时 */
-//#define OS_QUEUE_SIZE 6
-
-//#define SPECIFIC_TRUE  1
-//#define SPECIFIC_FALSE 0
-
-//extern uint8_t Task_Switch_Buffer[512];
-
-//extern uint8_t OSDevAddrs[];
-//extern uint32_t total_count;
-//extern uint8_t OSCoreID;
-//extern uint8_t OSDevNums;
-//extern uint8_t  OSMinCountPrio;	/* record the min count task's prio, this task will be used to multi core auto task switch*/
-//extern uint16_t OSMinCount;
-
-
-//extern uint8_t OSSuspendTaskPrio;
-
-//extern OS_EVENT* GetStackSem;
-//extern OS_EVENT* SendDataSem;
-////extern OS_EVENT* GetDataSem;
-//extern OS_EVENT* TaskSuspendSem;
-//extern OS_EVENT* DataTransferSem;
-
-//// type
-//#define GET_STACK_DATA     0x01
-//#define SEND_STACK_DATA    0x02
-//#define GET_VARIABLE_DATA  0x03 
-//#define SEND_VARIABLE_DATA 0x04
-//#define GET_CPU_USAGE      0x05
-
-//#define TASK_ACTIVATE      0x06
-//#define TASK_DISACTIVATE   0x07
-//#define TASK_ACTIVE_CHECK  0x08
-//#define TASK_ACTIVE_PRIOS  0x09
-
-//#define TASK_SWITCH_REQUEST 0x10
-//#define IS_BUSY             0x11
-
-////require
-//#define REQ_SIZE           0x01
-//#define REQ_PRIO           0x02
-//#define REQ_ADDRESS        0x03
-//#define REQ_DATA           0x04
-//#define REQ_COUNT          0x05 // CPU usage
-////respond
-//#define RES_OK             0x0F
-//#define RES_BUSY           0x02
-//#define NOT_ALLOWED_SWITCH 0x03
-//#define TASK_NOT_ACTIVATE  0x04
-//#define TAST_IS_ACTIVATE   0x05
-//#define PROTOCOL_ERROR     0x06
-//#define STACK_NOT_CREATED  0x07
-
-
-//#define TASK_SWITCH_SUCCESS 0u
-//#define TASK_NOT_EXITS      1u
-//#define TASK_SWITCH_BUFFER_IS_ZERO 2u
-
-//#define OS_MULTI_SCHED_PRIO   0u
-//#define OS_MULTI_SUSPEND_PRIO 1u
-//#define OS_MULTI_DATA_PRIO    2u
-
-//#define OS_BUSY_WAIT_DELAY    10u
-///* 如果是OS任务则返回True，不是则返回False */
-//#define IS_OS_TASK(prio)  ((prio) == OS_MULTI_SCHED_PRIO   || \
-//													 (prio) == OS_MULTI_SUSPEND_PRIO || \
-//													 (prio) == OS_MULTI_DATA_PRIO    || \
-//													 (prio) == OS_TASK_IDLE_PRIO)
-
-//uint8_t OS_GetStackData(INT8U* prio, uint8_t devAddr, uint8_t* buf, uint16_t* size);
-//uint8_t OS_SendStackData(INT8U target_prio, uint8_t devAddr, uint8_t* buf, uint16_t size);
-
-//uint8_t OS_GetVariableData(uint8_t devAddr, uint8_t* buf, uint16_t* size, uint32_t* address, uint8_t* type);
-//uint8_t OS_SendVariableData(uint8_t devAddr, uint8_t* buf, uint16_t size, uint32_t address, uint8_t type);
-
-//uint8_t OS_GetCpuUsage(uint8_t devAddr, uint16_t* count);
-//uint8_t OS_MultipleTaskSW(INT8U	  prio, OS_STK* stk, OS_STK  len);
-////uint8_t OS_GetVariableData(uint8_t devAddr, INT8U* target_prio, uint8_t* buf, uint16_t* size, uint32_t* address);
-//uint8_t OS_TaskSwitchRequest(uint8_t devAddr, INT8U* prio);
-//uint8_t OS_IsBusy(uint8_t devAddr, uint8_t* isBusy);
-//void OS_MultiCoreTaskInit(void);
-//void OSMultiHardwareInit(void);
-
-
-
-//typedef struct {
-//	uint8_t front; // 队首
-//	uint8_t rear; // 队尾
-//	uint8_t data[OS_QUEUE_SIZE]; // 队列数据
-//} OSQueue;
-
-//// 初始化队列
-//void OSInitQueue(OSQueue* q);
-//void OSEnterQueue(OSQueue* q, uint8_t value);
-//uint8_t OSOutQueue(OSQueue* q);
-
-//void OSMultiSemInit(void);
-
-//extern OSQueue os_queue;
-
-//#endif
-
 #if OS_MULTIPLE_CORE > 0u
 
 /* =============== 多核调度核心常量定义 =============== */
 #define USAGE_MAX_COUNT           10000u       /* CPU使用率最大计数值 */
 #define DIFF_COUNT                10u          /* 采样计数差值 */
 #define OS_MULTI_CORE_SCHED_DELAY 10000u      /* 主核调度间隔 */
-#define MAX_CORE_NUMS             5u           /* 最大支持核心数 */
+//#define MAX_CORE_NUMS             5u           /* 最大支持核心数 */
 #define ALL_CORES_ID              0xFFu        /* 初始化任务时所有核心ID */
 
 /* 外核数据传输相关常量 */
@@ -2220,19 +2106,8 @@ uint8_t OS_SendData(uint8_t* buf, uint16_t size, uint8_t type);
 void OS_MultiCoreTaskInit(void);     
 void OSMultiHardwareInit(void);      
 void OSMultiTaskInit(void);
-
-/* =============== 队列操作接口 =============== */
-typedef struct {
-    uint8_t front;  /* 队首 */
-    uint8_t rear;   /* 队尾 */
-    uint8_t data[OS_QUEUE_SIZE]; /* 队列数据 */
-} OSQueue;
-
-void OSInitQueue(OSQueue* q);
-void OSEnterQueue(OSQueue* q, uint8_t value);
-uint8_t OSOutQueue(OSQueue* q);
 void OSMultiSemInit(void);
-extern OSQueue os_queue;
+uint8_t OS_CoreIDInit(void);
 
 #endif
 

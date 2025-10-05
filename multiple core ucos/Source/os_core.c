@@ -637,9 +637,11 @@ void  OSInit (void)
 #endif
 
 #if OS_MULTIPLE_CORE > 0u
+
 		OSMultiSemInit();				
 		OSMultiHardwareInit();
 		OSMultiTaskInit();
+		OSCoreID = OS_CoreIDInit();
 		
 #endif
 }

@@ -10,7 +10,7 @@ void GPIO_EXTI_Init(void)
     
     // 2. 配置PB12为输入模式，上拉
     GPIO_InitTypeDef GPIO_InitStructure;
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13;
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOB, &GPIO_InitStructure);
@@ -50,25 +50,14 @@ void EXTI15_10_IRQHandler(void)
 		OS_ENTER_CRITICAL();
 		OSIntEnter();
 		OS_EXIT_CRITICAL();
-		//Serial_SendString("IQ!!!\n");
-    // 检查是否是EXTI12的中断
+		// 检查是否是EXTI12的中断
     if (EXTI_GetITStatus(EXTI_Line12) != RESET)
     {
-				INT8U err;
 				/* 释放信号量 */
-				Serial_SendString("IQ1!!!\n");
-				err = OSQPost(DataTransferQueue, &OSDevAddrs[1]);
+				OSQPost(DataTransferQueue, &OSDevAddrs[1]);
         EXTI_ClearITPendingBit(EXTI_Line12);
 		}
 		
-		if(EXTI_GetITStatus(EXTI_Line13) != RESET)
-    {
-        INT8U err;
-				/* 释放信号量 */
-			Serial_SendString("IQ2!!!\n");
-				err = OSQPost(DataTransferQueue, &OSDevAddrs[2]);
-        EXTI_ClearITPendingBit(EXTI_Line13);
-    }
 		OSIntExit();
 }
 

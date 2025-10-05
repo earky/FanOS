@@ -9,11 +9,6 @@
 
 #define I2C_MASTER_ADDRESS 0x20		//可以用于切换
 
-//uint16_t idx = 0;
-//uint8_t Mode = 0;
-//uint8_t Rxne_First_Data = 1;
-//uint8_t* ptr = NULL;
-//uint16_t size = 0;
 
 typedef struct{
 	uint16_t idx_recv;

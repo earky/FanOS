@@ -42,4 +42,3 @@
 .\objects\main.o: .\Hardware\I2C.h
 .\objects\main.o: .\Hardware\GPIO.h
 .\objects\main.o: .\Hardware\Serial.h
-.\objects\main.o: .\Hardware\SPI.h

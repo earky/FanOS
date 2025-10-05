@@ -6,43 +6,8 @@
 #include "I2C.h"
 #include "GPIO.h"
 #include "Serial.h"
-#include "SPI.h"
 
-int ID = 1;
-char str[512] = "123\n";
-
-int mainttt(){
-		Serial_Init();
-		Serial_SendString("hello\n");
-		
-		if(ID == 0){
-				GPIO_EXTI_Init();
-			
-				uint8_t* p = (uint8_t*) 0x200000c0;
-				uint32_t addr = (uint32_t) p;
-			
-				sprintf(str,"%x\n", addr);
-				Serial_SendString(str);
-				while(1){}
-		}else{
-				Slave_GPIO_Init();
-				
-			
-				Slave_SendData();
-				for(int i=0;i<100000;i++);
-				Slave_SendData();
-				while(1){
-						//GPIO_SetBits(GPIOB, GPIO_Pin_12);
-						
-						for(int i=0;i<100000;i++);
-						//Slave_SendData();
-						//GPIO_SetBits(GPIOB, GPIO_Pin_12);	
-						//GPIO_ResetBits(GPIOB, GPIO_Pin_12);
-						
-				}
-		}
-}
-
+char str[512];
 
 OS_STK Task_PWM_Led_STK1[128];
 OS_STK Task_PWM_Led_STK2[128];
@@ -51,26 +16,8 @@ OS_STK Task_PWM_Led_STK4[128];
 
 OS_STK Task_Serial_STK[128];
 
-
-//uint8_t Task_Switch_Buffer[512];
-
-
-//char sstr[10];
-
 //uint8_t tempData[] = {1,2,3,4,5,6,7,8,9};
 uint8_t tempData[] = {9,8,7,6,5,4,3,2,1};
-int id = 1;
-
-
-
-/* 
-							Task switch
-		if( max_count -  min_count > diff_count){
-							min_id -- > max_id 
-		}
-*/
-
-
 
 void PWM_Led1(void * p_arg){
 		int i = 0;
@@ -144,8 +91,6 @@ void Serial_Send_Count(void* p_arg){
 #if OS_CRITICAL_METHOD == 3u                               /* Allocate storage for CPU status register     */
     OS_CPU_SR  cpu_sr = 0u;
 #endif
-	OS_TCB    *ptcb = OSTCBPrioTbl[5];
-	OS_TCB    *p    = OSTCBPrioTbl[4];
 	OS_TCB    *idle = OSTCBPrioTbl[OS_TASK_IDLE_PRIO];
 	while(1){	
 		uint32_t countNow = 0;
@@ -258,9 +203,6 @@ void OS_Data_Transfer_Switch_Callback(uint8_t type){
 						Serial_SendString(str);
 				}
 				Serial_SendString("\n");
-				
-				sprintf(str, ">>> q_front:%u  q_rear:%u\n", os_queue.front, os_queue.rear);
-				Serial_SendString(str);
 				break;
 			default:
 			
@@ -290,10 +232,10 @@ int main(void)
 
 	OSInit();
 
-	OSTaskCreate(PWM_Led1,           (void *)0, &Task_PWM_Led_STK1[127] , 7,  0 ,SPECIFIC_FALSE);
-	OSTaskCreate(PWM_Led2,           (void *)0, &Task_PWM_Led_STK2[127] , 8,  0 ,SPECIFIC_FALSE);
-	OSTaskCreate(PWM_Led3,           (void *)0, &Task_PWM_Led_STK3[127] , 9,  0 ,SPECIFIC_FALSE);
-	OSTaskCreate(PWM_Led4,           (void *)0, &Task_PWM_Led_STK4[127] , 10, 0 ,SPECIFIC_FALSE);
+	//OSTaskCreate(PWM_Led1,           (void *)0, &Task_PWM_Led_STK1[127] , 7,  0 ,SPECIFIC_FALSE);
+	//OSTaskCreate(PWM_Led2,           (void *)0, &Task_PWM_Led_STK2[127] , 8,  0 ,SPECIFIC_FALSE);
+	//OSTaskCreate(PWM_Led3,           (void *)0, &Task_PWM_Led_STK3[127] , 9,  0 ,SPECIFIC_FALSE);
+	//OSTaskCreate(PWM_Led4,           (void *)0, &Task_PWM_Led_STK4[127] , 10, 0 ,SPECIFIC_FALSE);
 	//OSTaskCreate(Serial_Send_Count,  (void *)0, &Task_Serial_STK[127]  , 5, 0, SPECIFIC_TRUE);
 	//OSTaskCreate(Send_Shared_Memory_data, (void *)0, &T[127]  , 6, 1, SPECIFIC_TRUE);
 	SysTick_Config(40000u);

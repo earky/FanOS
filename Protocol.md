@@ -36,6 +36,8 @@ uint8_t (size_l)
 
 uint32_t (address) (start with low)
 
+uint8_t (type) (provide type handler)
+
 (data)
 
 **4.send variable data**
@@ -47,6 +49,8 @@ uint8_t (size_h)
 uint8_t (size_l)
 
 uint32_t (address) 
+
+uint8_t (type)
 
 (data)
 
