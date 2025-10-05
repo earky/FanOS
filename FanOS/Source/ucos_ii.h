@@ -2012,85 +2012,85 @@ void          OSCtxSw                 (void);
 
 #if OS_MULTIPLE_CORE > 0u
 
-/* =============== ¶àºËµ÷¶ÈºËÐÄ³£Á¿¶¨Òå =============== */
-#define USAGE_MAX_COUNT           10000u       /* CPUÊ¹ÓÃÂÊ×î´ó¼ÆÊýÖµ */
-#define DIFF_COUNT                10u          /* ²ÉÑù¼ÆÊý²îÖµ */
-#define OS_MULTI_CORE_SCHED_DELAY 10000u      /* Ö÷ºËµ÷¶È¼ä¸ô */
-#define MAX_CORE_NUMS             5u           /* ×î´óÖ§³ÖºËÐÄÊý */
-#define ALL_CORES_ID              0xFFu        /* ³õÊ¼»¯ÈÎÎñÊ±ËùÓÐºËÐÄID */
+/* =============== ï¿½ï¿½Ëµï¿½ï¿½Èºï¿½ï¿½Ä³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ =============== */
+#define USAGE_MAX_COUNT           10000u       /* CPUÊ¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµ */
+#define DIFF_COUNT                10u          /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµ */
+#define OS_MULTI_CORE_SCHED_DELAY 10000u      /* ï¿½ï¿½ï¿½Ëµï¿½ï¿½È¼ï¿½ï¿½ */
+//#define MAX_CORE_NUMS             5u           /* ï¿½ï¿½ï¿½Ö§ï¿½Öºï¿½ï¿½ï¿½ï¿½ï¿½ */
+#define ALL_CORES_ID              0xFFu        /* ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½Ðºï¿½ï¿½ï¿½ID */
 
-/* ÍâºËÊý¾Ý´«ÊäÏà¹Ø³£Á¿ */
-#define SLAVE_DATA_TRANSFER_WAIT_DELAY 1000u   /* ÍâºËµÈ´ýÖ÷ºËÊý¾Ý´¦ÀíµÄÑÓÊ± */
-#define OS_QUEUE_SIZE                  6u      /* ÈÎÎñ¶ÓÁÐ´óÐ¡ */
-#define OS_SEND_DATA_DELAY             10u		 /* µ±Ç°Ò»¸öÊý¾Ý»¹Î´´«ÊäÍê³ÉÊ±ÐèÒªµÄÑÓÊ± */
-#define OS_SEND_DATA_TIMEOUT           1000    /* Êý¾Ý´«ÊäµÄ³¬Ê±³£Á¿ */
+/* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý´ï¿½ï¿½ï¿½ï¿½ï¿½Ø³ï¿½ï¿½ï¿½ */
+#define SLAVE_DATA_TRANSFER_WAIT_DELAY 1000u   /* ï¿½ï¿½ËµÈ´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê± */
+#define OS_QUEUE_SIZE                  6u      /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð´ï¿½Ð¡ */
+#define OS_SEND_DATA_DELAY             10u		 /* ï¿½ï¿½Ç°Ò»ï¿½ï¿½ï¿½ï¿½ï¿½Ý»ï¿½Î´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½Ê± */
+#define OS_SEND_DATA_TIMEOUT           1000    /* ï¿½ï¿½ï¿½Ý´ï¿½ï¿½ï¿½Ä³ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ */
 
-/* Âß¼­Öµ³£Á¿ */
+/* ï¿½ß¼ï¿½Öµï¿½ï¿½ï¿½ï¿½ */
 #define SPECIFIC_TRUE         1u
 #define SPECIFIC_FALSE        0u
 
-/* =============== ¶àºËÈÎÎñÀàÐÍ¶¨Òå =============== */
-/* ÈÎÎñÀàÐÍ±êÊ¶ */
-#define GET_STACK_DATA        0x01u  /* »ñÈ¡Õ»Êý¾Ý */
-#define SEND_STACK_DATA       0x02u  /* ·¢ËÍÕ»Êý¾Ý */
-#define GET_VARIABLE_DATA     0x03u  /* »ñÈ¡±äÁ¿Êý¾Ý */
-#define SEND_VARIABLE_DATA    0x04u  /* ·¢ËÍ±äÁ¿Êý¾Ý */
-#define GET_CPU_USAGE         0x05u  /* »ñÈ¡CPUÊ¹ÓÃÂÊ */
-#define TASK_SWITCH_REQUEST   0x06u  /* ÈÎÎñÇÐ»»ÇëÇó */
-#define IS_BUSY               0x07u  /* ¼ì²éÃ¦Âµ×´Ì¬ */
-#define SEND_DATA_FINISHED    0x08u  /* ·¢ËÍÒÑ¾­Íê³É·¢ËÍ */
+/* =============== ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¶ï¿½ï¿½ï¿½ =============== */
+/* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í±ï¿½Ê¶ */
+#define GET_STACK_DATA        0x01u  /* ï¿½ï¿½È¡Õ»ï¿½ï¿½ï¿½ï¿½ */
+#define SEND_STACK_DATA       0x02u  /* ï¿½ï¿½ï¿½ï¿½Õ»ï¿½ï¿½ï¿½ï¿½ */
+#define GET_VARIABLE_DATA     0x03u  /* ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
+#define SEND_VARIABLE_DATA    0x04u  /* ï¿½ï¿½ï¿½Í±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
+#define GET_CPU_USAGE         0x05u  /* ï¿½ï¿½È¡CPUÊ¹ï¿½ï¿½ï¿½ï¿½ */
+#define TASK_SWITCH_REQUEST   0x06u  /* ï¿½ï¿½ï¿½ï¿½ï¿½Ð»ï¿½ï¿½ï¿½ï¿½ï¿½ */
+#define IS_BUSY               0x07u  /* ï¿½ï¿½ï¿½Ã¦Âµ×´Ì¬ */
+#define SEND_DATA_FINISHED    0x08u  /* ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¾ï¿½ï¿½ï¿½É·ï¿½ï¿½ï¿½ */
 
-#define RES_OK                0x0Fu  /* ÏìÓ¦³É¹¦ */
-#define RES_BUSY              0x02u  /* ÏìÓ¦Ã¦Âµ */
-#define NOT_ALLOWED_SWITCH    0x03u  /* ²»ÔÊÐíÇÐ»» */
-#define TASK_NOT_ACTIVATE     0x04u  /* ÈÎÎñÎ´¼¤»î */
-#define TASK_IS_ACTIVATE      0x05u  /* ÈÎÎñÒÑ¼¤»î */
-#define PROTOCOL_ERROR        0x06u  /* Ð­Òé´íÎó */
-#define STACK_NOT_CREATED     0x07u  /* Õ»Î´´´½¨ */
-#define TIME_OUT              0x08u  /* ³¬Ê± */
+#define RES_OK                0x0Fu  /* ï¿½ï¿½Ó¦ï¿½É¹ï¿½ */
+#define RES_BUSY              0x02u  /* ï¿½ï¿½Ó¦Ã¦Âµ */
+#define NOT_ALLOWED_SWITCH    0x03u  /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð»ï¿½ */
+#define TASK_NOT_ACTIVATE     0x04u  /* ï¿½ï¿½ï¿½ï¿½Î´ï¿½ï¿½ï¿½ï¿½ */
+#define TASK_IS_ACTIVATE      0x05u  /* ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¼ï¿½ï¿½ï¿½ */
+#define PROTOCOL_ERROR        0x06u  /* Ð­ï¿½ï¿½ï¿½ï¿½ï¿½ */
+#define STACK_NOT_CREATED     0x07u  /* Õ»Î´ï¿½ï¿½ï¿½ï¿½ */
+#define TIME_OUT              0x08u  /* ï¿½ï¿½Ê± */
 
-/* ÈÎÎñÇÐ»»·µ»Ø×´Ì¬ */
+/* ï¿½ï¿½ï¿½ï¿½ï¿½Ð»ï¿½ï¿½ï¿½ï¿½ï¿½×´Ì¬ */
 #define TASK_SWITCH_SUCCESS        0u
 #define TASK_NOT_EXITS             1u
 #define TASK_SWITCH_BUFFER_IS_ZERO 2u
 
-/* ¶àºËÈÎÎñÓÅÏÈ¼¶ */
-#define OS_MULTI_SCHED_PRIO   0u    /* µ÷¶ÈÈÎÎñÓÅÏÈ¼¶ */
-#define OS_MULTI_SUSPEND_PRIO 1u    /* ¹ÒÆðÈÎÎñÓÅÏÈ¼¶ */
-#define OS_MULTI_DATA_PRIO    2u    /* Êý¾Ý´«ÊäÈÎÎñÓÅÏÈ¼¶ */
+/* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¼ï¿½ */
+#define OS_MULTI_SCHED_PRIO   0u    /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¼ï¿½ */
+#define OS_MULTI_SUSPEND_PRIO 1u    /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¼ï¿½ */
+#define OS_MULTI_DATA_PRIO    2u    /* ï¿½ï¿½ï¿½Ý´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¼ï¿½ */
 
-#define OS_BUSY_WAIT_DELAY    10u   /* Ã¦µÈ´ýÑÓÊ± */
+#define OS_BUSY_WAIT_DELAY    10u   /* Ã¦ï¿½È´ï¿½ï¿½ï¿½Ê± */
 
-/* =============== ¶àºËÈÎÎñÀàÐÍÅÐ¶Ï =============== */
+/* =============== ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð¶ï¿½ =============== */
 /**
- * @brief ÅÐ¶ÏÓÅÏÈ¼¶ÊÇ·ñÎªOS¶àºËÈÎÎñ
- * @param prio ÈÎÎñÓÅÏÈ¼¶
- * @return TRUE(1) ÊÇOSÈÎÎñ£¬FALSE(0) ²»ÊÇ
+ * @brief ï¿½Ð¶ï¿½ï¿½ï¿½ï¿½È¼ï¿½ï¿½Ç·ï¿½ÎªOSï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+ * @param prio ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¼ï¿½
+ * @return TRUE(1) ï¿½ï¿½OSï¿½ï¿½ï¿½ï¿½FALSE(0) ï¿½ï¿½ï¿½ï¿½
  */
 #define IS_OS_TASK(prio) ((prio) == OS_MULTI_SCHED_PRIO || \
                           (prio) == OS_MULTI_SUSPEND_PRIO || \
                           (prio) == OS_MULTI_DATA_PRIO || \
                           (prio) == OS_TASK_IDLE_PRIO)
 
-/* =============== Íâ²¿±äÁ¿ÉùÃ÷ =============== */
-extern uint8_t Task_Switch_Buffer[512];  /* ÈÎÎñÇÐ»»»º³åÇø */
-extern uint8_t OSDevAddrs[];             /* Éè±¸µØÖ·Êý×é */
-extern uint32_t total_count;             /* ×ÜÈÎÎñ¼ÆÊý */
-extern uint8_t OSCoreID;                 /* µ±Ç°ºËÐÄID */
-extern uint8_t OSDevNums;                /* Éè±¸ÊýÁ¿ */
-extern uint8_t OSMinCountPrio;           /* ×îÐ¡¼ÆÊýÈÎÎñÓÅÏÈ¼¶ */
-extern uint16_t OSMinCount;              /* ×îÐ¡¼ÆÊý */
-extern uint8_t OSSuspendTaskPrio;        /* ¹ÒÆðÈÎÎñÓÅÏÈ¼¶ */
+/* =============== ï¿½â²¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ =============== */
+extern uint8_t Task_Switch_Buffer[512];  /* ï¿½ï¿½ï¿½ï¿½ï¿½Ð»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
+extern uint8_t OSDevAddrs[];             /* ï¿½è±¸ï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½ */
+extern uint32_t total_count;             /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
+extern uint8_t OSCoreID;                 /* ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ID */
+extern uint8_t OSDevNums;                /* ï¿½è±¸ï¿½ï¿½ï¿½ï¿½ */
+extern uint8_t OSMinCountPrio;           /* ï¿½ï¿½Ð¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¼ï¿½ */
+extern uint16_t OSMinCount;              /* ï¿½ï¿½Ð¡ï¿½ï¿½ï¿½ï¿½ */
+extern uint8_t OSSuspendTaskPrio;        /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¼ï¿½ */
 
-/* ÐÅºÅÁ¿¶ÔÏó */
-extern OS_EVENT* GetStackSem;            /* »ñÈ¡Õ»Êý¾ÝÐÅºÅÁ¿ */
-extern OS_EVENT* SendDataSem;            /* ·¢ËÍÊý¾ÝÐÅºÅÁ¿ */
-extern OS_EVENT* TaskSuspendSem;         /* ÈÎÎñ¹ÒÆðÐÅºÅÁ¿ */
-extern OS_EVENT* DataTransferSem;        /* Êý¾Ý´«ÊäÐÅºÅÁ¿ */
+/* ï¿½Åºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
+extern OS_EVENT* GetStackSem;            /* ï¿½ï¿½È¡Õ»ï¿½ï¿½ï¿½ï¿½ï¿½Åºï¿½ï¿½ï¿½ */
+extern OS_EVENT* SendDataSem;            /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Åºï¿½ï¿½ï¿½ */
+extern OS_EVENT* TaskSuspendSem;         /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Åºï¿½ï¿½ï¿½ */
+extern OS_EVENT* DataTransferSem;        /* ï¿½ï¿½ï¿½Ý´ï¿½ï¿½ï¿½ï¿½Åºï¿½ï¿½ï¿½ */
 extern OS_EVENT *DataTransferQueue;  
 
 
-/* =============== ¶àºËÈÎÎñ½Ó¿Úº¯Êý =============== */
+/* =============== ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¿Úºï¿½ï¿½ï¿½ =============== */
 uint8_t OS_GetStackData(INT8U* prio, uint8_t devAddr, uint8_t* buf, uint16_t* size);
 uint8_t OS_SendStackData(INT8U target_prio, uint8_t devAddr, uint8_t* buf, uint16_t size);
 uint8_t OS_GetVariableData(uint8_t devAddr, uint8_t* buf, uint16_t* size, uint32_t* address, uint8_t* type);
@@ -2102,7 +2102,7 @@ uint8_t OS_IsBusy(uint8_t devAddr, uint8_t* isBusy);
 uint8_t OS_SendDataFinished(uint8_t devAddr);
 uint8_t OS_SendData(uint8_t* buf, uint16_t size, uint8_t type);
 
-/* =============== ¶àºË³õÊ¼»¯º¯Êý =============== */
+/* =============== ï¿½ï¿½Ë³ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ =============== */
 void OS_MultiCoreTaskInit(void);     
 void OSMultiHardwareInit(void);      
 void OSMultiTaskInit(void);
